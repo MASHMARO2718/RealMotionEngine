@@ -1,115 +1,178 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { HandGesture } from '../lib/mediapipe-hand-tracking';
 
-// Import HandTracker with dynamic import to avoid SSR issues with camera
-const HandTracker = dynamic(() => import('../components/HandTracker'), {
-  ssr: false,
-});
+// クライアントサイドのみでレンダリングする必要がある
+const MediaPipeHandTracker = dynamic(
+  () => import('../components/MediaPipeHandTracker'),
+  { ssr: false }
+);
 
 export default function Home() {
-  const [gesture, setGesture] = useState<string | null>(null);
-  const [gestureHistory, setGestureHistory] = useState<string[]>([]);
+  const [currentGesture, setCurrentGesture] = useState<HandGesture[]>(['none']);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  const handleGestureDetected = (detectedGesture: string) => {
-    // 同じジェスチャーが連続して検出された場合は無視（ノイズ低減）
-    if (gesture === detectedGesture) return;
-    
-    setGesture(detectedGesture);
-    setGestureHistory(prev => {
-      // 最新の5つのジェスチャーだけを保持
-      const newHistory = [...prev, detectedGesture];
-      return newHistory.slice(-5);
-    });
+  // ジェスチャーが検出されたときのハンドラ
+  const handleGestureDetected = (gestures: HandGesture[]) => {
+    setCurrentGesture(gestures);
+    console.log('検出されたジェスチャー:', gestures);
   };
+  
+  // エラー処理ハンドラ
+  const handleError = useCallback((error: string) => {
+    console.error('ハンドトラッキングエラー:', error);
+    setErrorMessage(error);
+  }, []);
+  
+  // 再試行ハンドラ
+  const handleRetry = useCallback(() => {
+    setIsRetrying(true);
+    setErrorMessage(null);
+    
+    // 状態をリセットして再読み込み
+    setTimeout(() => {
+      setIsRetrying(false);
+    }, 500);
+  }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4">
-      <div className="z-10 w-full items-center justify-between font-mono text-sm mb-4">
-        <p className="flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-3 pt-4 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit">
-          RealMotionEngine&nbsp;
-          <code className="font-mono font-bold">v0.1.0</code>
-        </p>
+    <main className="flex min-h-screen flex-col items-center p-4 bg-gray-900 text-white">
+      <h1 className="text-4xl font-bold mb-8">RealMotion Engine</h1>
+      
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-semibold mb-2">MediaPipe ハンドトラッキング</h2>
+        <p className="text-gray-300 mb-4">あなたの手を動かして、リアルタイムでジェスチャーを検出してみましょう</p>
       </div>
-
-      <div className="flex flex-col md:flex-row items-start gap-6 w-full max-w-7xl">
-        {/* カメラビュー - 左側に配置 */}
-        <div className="w-full md:w-[320px] shrink-0">
-          <div className="relative border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-md">
-            <HandTracker 
-              width={320} 
-              height={240}
-              onGestureDetected={handleGestureDetected}
-            />
-          </div>
-          <div className="text-center text-sm text-gray-500 mb-4">
-            ↑ カメラビュー（320×240）
+      
+      {errorMessage && (
+        <div className="w-full max-w-3xl mb-4 p-4 bg-red-600 text-white rounded-lg">
+          <p className="font-semibold">エラーが発生しました:</p>
+          <p className="mb-2">{errorMessage}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="px-4 py-2 bg-white text-red-600 rounded-lg font-semibold"
+              onClick={handleRetry}
+            >
+              再試行
+            </button>
+            <Link 
+              href="/camera-test"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold"
+            >
+              カメラ診断を実行
+            </Link>
           </div>
         </div>
-        
-        {/* 右側のコンテンツエリア */}
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold mb-4">MediaPipe ハンドトラッキング</h1>
-          
-          {gesture && (
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 w-full">
-              <h2 className="text-lg font-semibold mb-2">検出されたハンドジェスチャー</h2>
-              <div className="flex justify-center items-center p-4 bg-green-100 dark:bg-green-900 rounded-lg">
-                <span className="text-2xl font-bold">{gesture}</span>
+      )}
+      
+      <div className="w-full max-w-3xl bg-gray-800 rounded-lg overflow-hidden shadow-xl">
+        {!isRetrying && (
+          <MediaPipeHandTracker 
+            onGestureDetected={handleGestureDetected}
+            onError={handleError}
+            showLandmarks={true}
+            width={640}
+            height={480}
+          />
+        )}
+        {isRetrying && (
+          <div className="flex items-center justify-center bg-gray-800 h-[480px]">
+            <p className="text-white">再読み込み中...</p>
+          </div>
+        )}
+      </div>
+      
+      <div className="mt-8 w-full max-w-3xl">
+        <h3 className="text-xl font-semibold mb-4">現在検出されたジェスチャー</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {currentGesture.map((gesture, index) => (
+            <div 
+              key={index} 
+              className="bg-gray-700 p-4 rounded-lg text-center"
+            >
+              <div className="text-3xl mb-2">
+                {getGestureEmoji(gesture)}
               </div>
-              
-              {gestureHistory.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-md font-medium mb-2">履歴</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {gestureHistory.map((g, index) => (
-                      <span 
-                        key={index}
-                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-full text-sm"
-                      >
-                        {g}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="font-medium text-lg">
+                {getGestureName(gesture)}
+              </div>
             </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-2">MediaPipe</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Googleの機械学習ベースのハンドポーズ認識技術
-              </p>
+          ))}
+        </div>
+      </div>
+      
+      <div className="mt-8 w-full max-w-3xl bg-gray-800 rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">トラブルシューティング</h3>
+          <Link 
+            href="/camera-test"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium"
+          >
+            カメラ診断を実行
+          </Link>
+        </div>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>カメラへのアクセスをブラウザで許可してください</li>
+          <li>他のアプリ（Zoom、Teamsなど）がカメラを使用していないことを確認してください</li>
+          <li>ブラウザを更新するか、別のブラウザ（Chrome、Firefox最新版）を試してください</li>
+          <li>一部の環境では、カメラへのアクセスが制限されている場合があります</li>
+        </ul>
+      </div>
+      
+      <div className="mt-12 w-full max-w-3xl">
+        <h3 className="text-xl font-semibold mb-4">認識可能なジェスチャー</h3>
+        <div className="grid grid-cols-4 gap-4">
+          {['fist', 'pointing', 'peace', 'thumbs_up', 'open_hand', 'ok', 'rock', 'unknown'].map((gesture) => (
+            <div 
+              key={gesture} 
+              className="bg-gray-700 p-3 rounded-lg text-center"
+            >
+              <div className="text-2xl mb-1">
+                {getGestureEmoji(gesture as HandGesture)}
+              </div>
+              <div className="font-medium text-sm">
+                {getGestureName(gesture as HandGesture)}
+              </div>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-2">21点のランドマーク</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                各指の関節と手のひらを含む精密なトラッキング
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-2">リアルタイム認識</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                WebAssemblyとWorkerスレッドによる高速処理
-              </p>
-            </div>
-          </div>
-          
-          <div className="mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <h2 className="text-lg font-semibold mb-2">使い方</h2>
-            <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-gray-400 space-y-2">
-              <li>手をカメラに向けて、ジェスチャーを行ってください</li>
-              <li>サムズアップ(thumbs_up)、ピース(peace)、指差し(pointing)などのジェスチャーが認識されます</li>
-              <li>検出されたジェスチャーは上部に表示されます</li>
-            </ul>
-          </div>
+          ))}
         </div>
       </div>
     </main>
   );
+}
+
+// ジェスチャーに対応する絵文字を取得
+function getGestureEmoji(gesture: HandGesture): string {
+  switch (gesture) {
+    case 'fist': return '✊';
+    case 'pointing': return '👆';
+    case 'peace': return '✌️';
+    case 'thumbs_up': return '👍';
+    case 'open_hand': return '✋';
+    case 'ok': return '👌';
+    case 'rock': return '🤘';
+    case 'unknown': return '❓';
+    case 'none': return '🔍';
+    default: return '❓';
+  }
+}
+
+// ジェスチャーの名前を取得
+function getGestureName(gesture: HandGesture): string {
+  switch (gesture) {
+    case 'fist': return 'グー';
+    case 'pointing': return '指差し';
+    case 'peace': return 'ピース';
+    case 'thumbs_up': return 'いいね';
+    case 'open_hand': return '開いた手';
+    case 'ok': return 'OK';
+    case 'rock': return 'ロック';
+    case 'unknown': return '不明';
+    case 'none': return '検出中...';
+    default: return '不明';
+  }
 } 

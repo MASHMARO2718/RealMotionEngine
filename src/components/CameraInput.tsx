@@ -55,6 +55,27 @@ export default function CameraInput({
   }, [width, height]);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const handleVideoLoaded = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        console.log(`【デバッグ】ビデオサイズ: ${video.videoWidth}x${video.videoHeight}`);
+        setIsStreaming(true);
+      } else {
+        console.error('【デバッグ】ビデオサイズが無効です:', video.videoWidth, video.videoHeight);
+        setError('カメラのサイズが無効です。ブラウザの設定を確認してください。');
+      }
+    };
+    
+    video.addEventListener('loadedmetadata', handleVideoLoaded);
+    
+    return () => {
+      video.removeEventListener('loadedmetadata', handleVideoLoaded);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!onFrame || !isStreaming) return;
     
     let animationFrameId: number;
@@ -75,7 +96,14 @@ export default function CameraInput({
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
-        if (video && canvas) {
+        if (video && canvas && video.readyState === 4) {
+          if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+            console.warn('【デバッグ】ビデオサイズが無効です:', video.videoWidth, video.videoHeight);
+            frameProcessingRef.current = false;
+            animationFrameId = requestAnimationFrame(processFrame);
+            return;
+          }
+          
           const ctx = canvas.getContext('2d');
           if (ctx) {
             canvas.width = width;
@@ -84,10 +112,14 @@ export default function CameraInput({
             ctx.drawImage(video, 0, 0, width, height);
             const imageData = ctx.getImageData(0, 0, width, height);
             
-            try {
-              onFrame(imageData, video);
-            } catch (err) {
-              console.error('Error processing video frame:', err);
+            if (imageData.width > 0 && imageData.height > 0) {
+              try {
+                onFrame(imageData, video);
+              } catch (err) {
+                console.error('Error processing video frame:', err);
+              }
+            } else {
+              console.warn('【デバッグ】画像データのサイズが無効です:', imageData.width, imageData.height);
             }
           }
         }
