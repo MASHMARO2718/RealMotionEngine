@@ -18,8 +18,8 @@ interface HandTrackerProps {
 }
 
 export default function HandTracker({
-  width = 640,
-  height = 480,
+  width = 320,
+  height = 240,
   onGestureDetected,
   onHandLandmarksDetected
 }: HandTrackerProps) {
@@ -271,10 +271,9 @@ export default function HandTracker({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       // ステータス情報
-      ctx.font = '14px Arial';
-      ctx.fillStyle = 'white';
-      ctx.fillText(`Frame: ${Date.now() % 10000}`, 10, 20);
-      ctx.fillText(`手の検出: ${result.landmarks.length}個`, 10, 40);
+      ctx.font = '16px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillText(`検出: ${result.landmarks.length}個の手`, 10, 25);
       
       console.log(`【デバッグ】描画: 手${result.landmarks.length}個、キャンバスサイズ=${canvas.width}x${canvas.height}`);
       
@@ -282,14 +281,86 @@ export default function HandTracker({
       result.landmarks.forEach((landmarks, handIndex) => {
         console.log(`【デバッグ】手${handIndex}: ${landmarks.length}ポイント`);
         
-        // 単純な点として描画
+        // ランドマーク間の線を描画
+        const connections = [
+          [0, 1], [1, 2], [2, 3], [3, 4],           // 親指
+          [0, 5], [5, 6], [6, 7], [7, 8],           // 人差し指
+          [5, 9], [9, 10], [10, 11], [11, 12],      // 中指
+          [9, 13], [13, 14], [14, 15], [15, 16],    // 薬指
+          [13, 17], [17, 18], [18, 19], [19, 20],   // 小指
+          [0, 17], [5, 9], [9, 13], [13, 17]        // 手のひら
+        ];
+        
+        // 手のひらの色
+        const baseColor = handIndex === 0 ? 
+          { r: 0, g: 255, b: 128 } : 
+          { r: 255, g: 128, b: 0 };
+        
+        // 線のグラデーション効果
+        const lineGradient = (alpha = 0.7) => 
+          `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alpha})`;
+        
+        // まず線を描画（透明度で奥行き感を出す）
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        connections.forEach(([i, j]) => {
+          const point1 = landmarks[i];
+          const point2 = landmarks[j];
+          
+          const x1 = point1.x * canvas.width;
+          const y1 = point1.y * canvas.height;
+          const x2 = point2.x * canvas.width;
+          const y2 = point2.y * canvas.height;
+          
+          // 指先に近いほど濃く
+          const isFingerTip = [4, 8, 12, 16, 20].includes(j);
+          ctx.strokeStyle = lineGradient(isFingerTip ? 0.9 : 0.7);
+          
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        });
+        
+        // 次にランドマークを描画
         landmarks.forEach((landmark, index) => {
           const x = landmark.x * canvas.width;
           const y = landmark.y * canvas.height;
           
+          // 指先は特別な色で強調
+          const isFingerTip = [4, 8, 12, 16, 20].includes(index);
+          const isWrist = index === 0;
+          
+          // サイズをポイントの種類によって調整
+          const radius = isFingerTip ? 7 : (isWrist ? 8 : 4);
+          
+          // グロー効果
+          if (isFingerTip || isWrist) {
+            ctx.shadowColor = isFingerTip ? 
+              'rgba(255, 255, 0, 0.7)' : 
+              `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, 0.7)`;
+            ctx.shadowBlur = 15;
+          } else {
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+          }
+          
           ctx.beginPath();
-          ctx.arc(x, y, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = 'red';
+          ctx.arc(x, y, radius, 0, 2 * Math.PI);
+          
+          if (isFingerTip) {
+            // 指先は黄色
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+          } else if (isWrist) {
+            // 手首は基本色
+            ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, 0.9)`;
+          } else {
+            // その他のポイント
+            ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, 0.8)`;
+          }
+          
           ctx.fill();
         });
       });

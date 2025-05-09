@@ -25,26 +25,26 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6">
-      <div className="z-10 w-full items-center justify-between font-mono text-sm mb-6">
-        <p className="flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-4 pt-6 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit">
+    <main className="flex min-h-screen flex-col items-center p-4">
+      <div className="z-10 w-full items-center justify-between font-mono text-sm mb-4">
+        <p className="flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-3 pt-4 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit">
           RealMotionEngine&nbsp;
           <code className="font-mono font-bold">v0.1.0</code>
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row items-start gap-6 w-full max-w-6xl">
-        {/* カメラビュー - 左側に配置してサイズを小さく */}
-        <div className="w-full md:w-[240px] shrink-0">
-          <div className="relative border border-gray-300 rounded-lg overflow-hidden mb-4">
+      <div className="flex flex-col md:flex-row items-start gap-6 w-full max-w-7xl">
+        {/* カメラビュー - 左側に配置 */}
+        <div className="w-full md:w-[320px] shrink-0">
+          <div className="relative border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-md">
             <HandTracker 
-              width={240} 
-              height={180}
+              width={320} 
+              height={240}
               onGestureDetected={handleGestureDetected}
             />
           </div>
           <div className="text-center text-sm text-gray-500 mb-4">
-            ↑ カメラビュー（240×180）
+            ↑ カメラビュー（320×240）
           </div>
         </div>
         
