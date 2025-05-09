@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { HandGesture } from '../lib/mediapipe-hand-tracking';
+import MediaPipeErrorBoundary from '../components/MediaPipeErrorBoundary';
 
 // クライアントサイドのみでレンダリングする必要がある
-const MediaPipeHandTracker = dynamic(
-  () => import('../components/MediaPipeHandTracker'),
+const HandTracker = dynamic(
+  () => import('../components/HandTracker'),
   { ssr: false }
 );
 
@@ -41,10 +42,10 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-8">RealMotion Engine</h1>
+      <h1 className="text-4xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-green-400">RealMotion Engine</h1>
       
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold mb-2">MediaPipe ハンドトラッキング</h2>
+        <h2 className="text-2xl font-semibold mb-2 text-green-400">サイバーパンク・ハンドトラッキング</h2>
         <p className="text-gray-300 mb-4">あなたの手を動かして、リアルタイムでジェスチャーを検出してみましょう</p>
       </div>
       
@@ -69,15 +70,21 @@ export default function Home() {
         </div>
       )}
       
-      <div className="w-full max-w-3xl bg-gray-800 rounded-lg overflow-hidden shadow-xl">
+      <div className="w-full max-w-3xl bg-gray-800 rounded-lg overflow-hidden shadow-xl border border-green-500"
+           style={{ boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)' }}>
         {!isRetrying && (
-          <MediaPipeHandTracker 
-            onGestureDetected={handleGestureDetected}
-            onError={handleError}
-            showLandmarks={true}
-            width={640}
-            height={480}
-          />
+          <MediaPipeErrorBoundary>
+            <div>
+              <HandTracker 
+                onGestureDetected={handleGestureDetected}
+                onError={handleError}
+                showLandmarks={true}
+                width={640}
+                height={480}
+                glowSize={20}
+              />
+            </div>
+          </MediaPipeErrorBoundary>
         )}
         {isRetrying && (
           <div className="flex items-center justify-center bg-gray-800 h-[480px]">
@@ -87,17 +94,18 @@ export default function Home() {
       </div>
       
       <div className="mt-8 w-full max-w-3xl">
-        <h3 className="text-xl font-semibold mb-4">現在検出されたジェスチャー</h3>
+        <h3 className="text-xl font-semibold mb-4 text-green-400">現在検出されたジェスチャー</h3>
         <div className="grid grid-cols-2 gap-4">
           {currentGesture.map((gesture, index) => (
             <div 
               key={index} 
-              className="bg-gray-700 p-4 rounded-lg text-center"
+              className="bg-gray-700 p-4 rounded-lg text-center border border-cyan-800"
+              style={{ boxShadow: '0 0 10px rgba(0, 255, 136, 0.2)' }}
             >
               <div className="text-3xl mb-2">
                 {getGestureEmoji(gesture)}
               </div>
-              <div className="font-medium text-lg">
+              <div className="font-medium text-lg text-cyan-300">
                 {getGestureName(gesture)}
               </div>
             </div>
@@ -105,17 +113,32 @@ export default function Home() {
         </div>
       </div>
       
-      <div className="mt-8 w-full max-w-3xl bg-gray-800 rounded-lg p-4">
+      <div className="mt-8 w-full max-w-3xl bg-gray-800 rounded-lg p-4 border border-green-500"
+           style={{ boxShadow: '0 0 10px rgba(0, 255, 136, 0.3)' }}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold">トラブルシューティング</h3>
-          <Link 
-            href="/camera-test"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium"
-          >
-            カメラ診断を実行
-          </Link>
+          <h3 className="text-xl font-semibold text-green-400">トラブルシューティング</h3>
+          <div className="flex space-x-2">
+            <Link 
+              href="/camera-test"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium"
+            >
+              カメラ診断を実行
+            </Link>
+            <Link 
+              href="/hand-tracking-demo"
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium"
+            >
+              ハンドトラッキングデモ
+            </Link>
+            <Link 
+              href="/landmark-demo"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium"
+            >
+              ランドマーク可視化デモ
+            </Link>
+          </div>
         </div>
-        <ul className="list-disc pl-5 space-y-2">
+        <ul className="list-disc pl-5 space-y-2 text-cyan-100">
           <li>カメラへのアクセスをブラウザで許可してください</li>
           <li>他のアプリ（Zoom、Teamsなど）がカメラを使用していないことを確認してください</li>
           <li>ブラウザを更新するか、別のブラウザ（Chrome、Firefox最新版）を試してください</li>
@@ -124,17 +147,18 @@ export default function Home() {
       </div>
       
       <div className="mt-12 w-full max-w-3xl">
-        <h3 className="text-xl font-semibold mb-4">認識可能なジェスチャー</h3>
+        <h3 className="text-xl font-semibold mb-4 text-green-400">認識可能なジェスチャー</h3>
         <div className="grid grid-cols-4 gap-4">
           {['fist', 'pointing', 'peace', 'thumbs_up', 'open_hand', 'ok', 'rock', 'unknown'].map((gesture) => (
             <div 
               key={gesture} 
-              className="bg-gray-700 p-3 rounded-lg text-center"
+              className="bg-gray-700 p-3 rounded-lg text-center border border-cyan-800"
+              style={{ boxShadow: '0 0 10px rgba(0, 255, 136, 0.2)' }}
             >
               <div className="text-2xl mb-1">
                 {getGestureEmoji(gesture as HandGesture)}
               </div>
-              <div className="font-medium text-sm">
+              <div className="font-medium text-sm text-cyan-300">
                 {getGestureName(gesture as HandGesture)}
               </div>
             </div>

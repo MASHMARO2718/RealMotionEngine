@@ -5,6 +5,7 @@ import {
   GestureRecognizer,
   GestureRecognizerResult
 } from '@mediapipe/tasks-vision';
+import { suppressTensorFlowErrors, restoreConsoleError } from '../utils/error-handling';
 
 // MediaPipeモデルのパス
 // CDN URLを使用
@@ -19,6 +20,9 @@ let handLandmarker: HandLandmarker | null = null;
 let gestureRecognizer: GestureRecognizer | null = null;
 let isInitializing = false;
 let initPromise: Promise<boolean> | null = null;
+
+// タイムスタンプ管理のための変数を追加
+let lastTimestamp = 0;
 
 /**
  * MediaPipeのWASMをロードするためのヘルパー関数
@@ -68,7 +72,15 @@ async function loadWasmFiles(): Promise<boolean> {
  * MediaPipeハンドトラッキングを初期化します
  */
 export async function initializeMediaPipeHandTracking(): Promise<boolean> {
-  if (handLandmarker && gestureRecognizer) return true;
+  // 既存のインスタンスをクリーンアップ
+  if (handLandmarker || gestureRecognizer) {
+    try {
+      disposeMediaPipeHandTracking();
+    } catch (err) {
+      console.warn('クリーンアップエラー（無視）:', err);
+    }
+  }
+  
   if (isInitializing) return initPromise as Promise<boolean>;
   
   isInitializing = true;
@@ -95,11 +107,11 @@ export async function initializeMediaPipeHandTracking(): Promise<boolean> {
             modelAssetPath: HAND_LANDMARKER_MODEL_URL,
             delegate: 'GPU'
           },
-          runningMode: 'VIDEO',
+          runningMode: 'IMAGE', // 【重要】VIDEO モードではなく IMAGE モードを使用
           numHands: 2,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minHandDetectionConfidence: 0.3, // 検出感度を高める
+          minHandPresenceConfidence: 0.3,  // 検出感度を高める
+          minTrackingConfidence: 0.3       // 検出感度を高める
         });
         console.log('HandLandmarker loaded successfully');
       } catch (handError) {
@@ -112,14 +124,23 @@ export async function initializeMediaPipeHandTracking(): Promise<boolean> {
               modelAssetPath: HAND_LANDMARKER_MODEL_URL,
               delegate: 'CPU'
             },
-            runningMode: 'VIDEO',
-            numHands: 2
+            runningMode: 'IMAGE', // 【重要】VIDEO モードではなく IMAGE モードを使用
+            numHands: 2,
+            minHandDetectionConfidence: 0.3,
+            minHandPresenceConfidence: 0.3,
+            minTrackingConfidence: 0.3
           });
           console.log('HandLandmarker loaded with CPU fallback');
         } catch (fallbackError) {
           console.error('HandLandmarker CPU fallback failed:', fallbackError);
           throw fallbackError;
         }
+      }
+      
+      // 初期化チェック
+      if (!handLandmarker) {
+        console.error('HandLandmarkerの初期化に失敗しました');
+        return false;
       }
       
       console.log('Loading GestureRecognizer model...');
@@ -131,8 +152,11 @@ export async function initializeMediaPipeHandTracking(): Promise<boolean> {
             modelAssetPath: GESTURE_RECOGNIZER_MODEL_URL,
             delegate: 'GPU'
           },
-          runningMode: 'VIDEO',
-          numHands: 2
+          runningMode: 'IMAGE',
+          numHands: 2,
+          minHandDetectionConfidence: 0.3,
+          minHandPresenceConfidence: 0.3,
+          minTrackingConfidence: 0.3
         });
         console.log('GestureRecognizer loaded successfully');
       } catch (gestureError) {
@@ -154,6 +178,18 @@ export async function initializeMediaPipeHandTracking(): Promise<boolean> {
 }
 
 /**
+ * 空のランドマーク結果を生成する関数を追加
+ */
+function createEmptyHandLandmarkerResult(): HandLandmarkerResult {
+  return {
+    landmarks: [],
+    worldLandmarks: [],
+    handednesses: [],
+    handedness: [] // 一部のバージョンで必要な場合
+  };
+}
+
+/**
  * 画像/ビデオから手のランドマークを検出します
  */
 export async function detectHandLandmarks(
@@ -166,16 +202,36 @@ export async function detectHandLandmarks(
       if (!initialized) return null;
     }
     
-    // 異なる入力タイプに対応
+    // ビデオ/画像サイズが有効かチェック
     if (source instanceof HTMLVideoElement) {
-      return handLandmarker!.detectForVideo(source, timestamp || performance.now());
-    } else if (source instanceof HTMLImageElement) {
-      return handLandmarker!.detect(source);
-    } else {
-      return handLandmarker!.detect(source);
+      // ビデオサイズが無効な場合は検出をスキップ
+      if (source.videoWidth <= 0 || source.videoHeight <= 0) {
+        console.warn('無効なビデオサイズ:', source.videoWidth, source.videoHeight);
+        return createEmptyHandLandmarkerResult();
+      }
+    }
+
+    // タイムスタンプを管理して一貫性を確保
+    // もしタイムスタンプが前回よりも小さい場合は前回の値+1を使用
+    const currentTimestamp = timestamp || Date.now();
+    const safeTimestamp = currentTimestamp <= lastTimestamp 
+      ? lastTimestamp + 1 
+      : currentTimestamp;
+    
+    lastTimestamp = safeTimestamp;
+
+    // 手のランドマークを検出
+    try {
+      // IMAGEモードで検出を行う (タイムスタンプを使用しない)
+      const result = handLandmarker!.detect(source);
+      return result;
+    } catch (detectionError) {
+      // 検出エラーの場合は、空の結果を返す
+      console.warn('検出エラー（無視して続行）:', detectionError);
+      return createEmptyHandLandmarkerResult();
     }
   } catch (error) {
-    console.error('手のランドマーク検出エラー:', error);
+    console.error('ハンドランドマーク検出エラー:', error);
     return null;
   }
 }
@@ -193,14 +249,8 @@ export async function recognizeGesture(
       if (!initialized) return null;
     }
     
-    // 異なる入力タイプに対応
-    if (source instanceof HTMLVideoElement) {
-      return gestureRecognizer!.recognizeForVideo(source, timestamp || performance.now());
-    } else if (source instanceof HTMLImageElement) {
-      return gestureRecognizer!.recognize(source);
-    } else {
-      return gestureRecognizer!.recognize(source);
-    }
+    // イメージモードを使用
+    return gestureRecognizer!.recognize(source);
   } catch (error) {
     console.error('ジェスチャー認識エラー:', error);
     return null;
@@ -277,26 +327,59 @@ function distance(a: {x: number, y: number, z: number}, b: {x: number, y: number
  * リソースを解放
  */
 export function disposeMediaPipeHandTracking(): void {
-  if (handLandmarker) {
-    try {
-      handLandmarker.close();
-    } catch (err) {
-      console.warn('HandLandmarkerのクローズ中にエラーが発生しました:', err);
-    } finally {
-      handLandmarker = null;
-    }
-  }
+  // ここで重要なのは、closeGraphのエラーを抑制するために
+  // まずTensorFlowのコンソールエラーを一時的に無効化すること
   
-  if (gestureRecognizer) {
-    try {
-      gestureRecognizer.close();
-    } catch (err) {
-      console.warn('GestureRecognizerのクローズ中にエラーが発生しました:', err);
-    } finally {
-      gestureRecognizer = null;
-    }
-  }
+  // オリジナルのコンソールエラーを保存
+  const originalError = console.error;
   
-  isInitializing = false;
-  initPromise = null;
+  // TensorFlowのINFOメッセージを無視するよう設定
+  console.error = function(...args) {
+    // "INFO: Created TensorFlow" を含むメッセージを無視
+    if (args[0] && typeof args[0] === 'string' && 
+       (args[0].includes('TensorFlow') || args[0].includes('INFO:'))) {
+      return;
+    }
+    // それ以外のエラーは通常どおり表示
+    return originalError.apply(console, args);
+  };
+
+  try {
+    // 先にgestureRecognizerを解放
+    if (gestureRecognizer) {
+      try {
+        // クローズ前に少し遅延を入れることで安全に解放
+        setTimeout(() => {
+          try {
+            gestureRecognizer!.close();
+          } catch (err) {
+            // エラーは抑制済み
+          } finally {
+            gestureRecognizer = null;
+          }
+        }, 0);
+      } catch (err) {
+        // エラーは無視
+      }
+    }
+    
+    // 次にhandLandmarkerを解放
+    if (handLandmarker) {
+      try {
+        handLandmarker.close();
+      } catch (err) {
+        // エラーは抑制済み
+      } finally {
+        handLandmarker = null;
+      }
+    }
+  } catch (error) {
+    // すべてのエラーを無視
+  } finally {
+    // コンソールエラーを元に戻す
+    console.error = originalError;
+    
+    isInitializing = false;
+    initPromise = null;
+  }
 }
