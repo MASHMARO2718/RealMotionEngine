@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { HandLandmarkerResult } from '@mediapipe/tasks-vision';
-import CameraInput from './CameraInput';
+import CameraInput from '../shared/CameraInput';
 import {
   initializeWasmHandTracking,
   detectWasmHandLandmarks,
   recognizeWasmHandGesture
-} from '../lib/wasm-hand-tracking';
+} from '../../lib/hand/wasm-hand-tracking';
 
 interface HandTrackerProps {
   width?: number;
@@ -169,7 +169,7 @@ export default function WasmHandTracker({
       ctx.fillText(`手の検出: ${result.landmarks.length}個`, 20, 60);
       
       // ジェスチャーの認識
-      const gesture = recognizeWasmHandGesture(result);
+      const gesture = await recognizeWasmHandGesture(result);
         
       if (gesture) {
         setCurrentGesture(gesture);

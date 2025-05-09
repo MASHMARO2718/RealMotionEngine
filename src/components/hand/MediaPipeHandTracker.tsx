@@ -12,8 +12,8 @@ import {
   analyzeHandGesture,
   HandGesture,
   disposeMediaPipeHandTracking
-} from '../lib/mediapipe-hand-tracking';
-import { suppressTensorFlowErrors, restoreConsoleError } from '../utils/error-handling';
+} from '../../lib/hand/mediapipe-hand-tracking';
+import { suppressTensorFlowErrors, restoreConsoleError } from '../../utils/error-handling';
 
 // コンポーネントのプロパティ
 interface MediaPipeHandTrackerProps {

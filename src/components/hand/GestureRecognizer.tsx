@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import MotionTracker from './MotionTracker';
-import { Point, matchGesture, smoothness } from '../lib/motion-utils';
+import MotionTracker from '../shared/MotionTracker';
+import { Point, matchGesture, smoothness } from '../../lib/shared/motion-utils';
 
 // 事前定義されたジェスチャーテンプレート
 const gestureTemplates = {

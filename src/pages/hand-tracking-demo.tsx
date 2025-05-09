@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import HandTracker from '../components/HandTracker';
-import { HandGesture } from '../lib/mediapipe-hand-tracking';
-import MediaPipeErrorBoundary from '../components/MediaPipeErrorBoundary';
+import HandTracker from '../components/hand/HandTracker';
+import { HandGesture } from '../lib/hand/mediapipe-hand-tracking';
+import MediaPipeErrorBoundary from '../components/shared/MediaPipeErrorBoundary';
 
 export default function HandTrackingDemo() {
   const [detectedGestures, setDetectedGestures] = useState<HandGesture[]>(['none']);

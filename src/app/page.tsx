@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { HandGesture } from '../lib/mediapipe-hand-tracking';
-import MediaPipeErrorBoundary from '../components/MediaPipeErrorBoundary';
+import { HandGesture } from '../lib/hand/mediapipe-hand-tracking';
+import MediaPipeErrorBoundary from '../components/shared/MediaPipeErrorBoundary';
 
 // クライアントサイドのみでレンダリングする必要がある
 const HandTracker = dynamic(
-  () => import('../components/HandTracker'),
+  () => import('../components/hand/HandTracker'),
   { ssr: false }
 );
 

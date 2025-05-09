@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import CameraInput from './CameraInput';
+import CameraInput from './shared/CameraInput';
 import { useKalman } from '../hooks/useKalman';
 
 interface Point {

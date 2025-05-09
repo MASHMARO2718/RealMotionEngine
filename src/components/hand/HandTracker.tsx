@@ -9,14 +9,13 @@ import {
   analyzeHandGesture,
   HandGesture,
   disposeMediaPipeHandTracking
-} from '../lib/mediapipe-hand-tracking';
+} from '../../lib/hand/mediapipe-hand-tracking';
 import { 
   drawHandLandmarks, 
   drawCyberpunkGrid, 
-  drawScanningMessage, 
   CYBERPUNK_COLORS
-} from '../lib/mediapipe-utils';
-import { suppressTensorFlowErrors, restoreConsoleError } from '../utils/error-handling';
+} from '../../lib/shared/mediapipe-utils';
+import { suppressTensorFlowErrors, restoreConsoleError } from '../../utils/error-handling';
 
 interface HandTrackerProps {
   onHandsDetected?: (result: HandLandmarkerResult) => void;
@@ -80,6 +79,9 @@ export default function HandTracker({
           if (onError) onError(errorMsg);
           return;
         }
+        
+        // 初期化成功後すぐにカメラセットアップを試行
+        await setupCamera();
       } catch (err) {
         const errorMsg = `初期化エラー: ${err instanceof Error ? err.message : String(err)}`;
         console.error(errorMsg, err);
@@ -246,8 +248,17 @@ export default function HandTracker({
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.restore();
     
-    // サイバーパンク風グリッドを描画
-    drawCyberpunkGrid(ctx, canvas.width, canvas.height);
+    // サイバーパンク風グリッドを描画（一時的に無効化）
+    // drawCyberpunkGrid(ctx, canvas.width, canvas.height);
+    
+    // シンプルな背景色を設定（デバッグ用）
+    ctx.fillStyle = 'rgba(20, 20, 40, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // デバッグ用テキスト（常に表示）
+    ctx.font = '16px monospace';
+    ctx.fillStyle = CYBERPUNK_COLORS.text;
+    ctx.fillText(`カメラ接続中...`, 20, 30);
     
     // 手のランドマーク検出を実行
     // タイムスタンプを明示的に渡す
@@ -280,9 +291,7 @@ export default function HandTracker({
       } else {
         // 手が検出されなかった
         setHandsDetected(false);
-        
-        // スキャニングメッセージを表示
-        drawScanningMessage(ctx, canvas.width, canvas.height);
+        // ここでは何も追加描画しない（ビデオフレームとグリッドは既に描画済み）
       }
     }).catch(err => {
       console.error('ハンドトラッキングエラー:', err);
@@ -304,6 +313,7 @@ export default function HandTracker({
   useEffect(() => {
     // カメラが準備できたらハンドトラッキングを開始
     if (isInitialized && !error) {
+      console.log('カメラのセットアップを開始します...');
       setupCamera().catch(err => {
         console.error('カメラセットアップエラー:', err);
       });
@@ -311,6 +321,7 @@ export default function HandTracker({
     
     // ハンドトラッキングアニメーションの開始
     if (isInitialized && isRunning && !requestRef.current) {
+      console.log('ハンドトラッキングアニメーションを開始します...');
       requestRef.current = requestAnimationFrame(runHandTracking);
     }
     
@@ -383,10 +394,10 @@ export default function HandTracker({
         {useGestureRecognizer && <p>ジェスチャー: {gestures.join(', ')}</p>}
       </div>
       
-      {/* ビデオ要素（非表示） */}
+      {/* ビデオ要素（デバッグ用に表示） */}
       <video
         ref={videoRef}
-        className="invisible absolute top-0 left-0"
+        className="hidden"
         width={width}
         height={height}
         playsInline

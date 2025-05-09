@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 // クライアントサイドのみでレンダリングする必要がある
 const CameraTestComponent = dynamic(
-  () => import('../../components/CameraTestComponent'),
+  () => import('../../components/shared/CameraTestComponent'),
   { ssr: false }
 );
 

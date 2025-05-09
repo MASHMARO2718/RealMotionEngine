@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { suppressTensorFlowErrors, restoreConsoleError } from '../utils/error-handling';
+import { suppressTensorFlowErrors, restoreConsoleError } from '../../utils/error-handling';
 
 interface Props {
   children: ReactNode;
