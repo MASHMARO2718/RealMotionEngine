@@ -1,0 +1,189 @@
+# Cursor Rules for **RealMotionEngine (RME)**
+# =============================================================================
+# Central **hub** file that steers all AI-assisted generation, human workflows,
+# and repo conventions.  Numbered sub-sections (e.g. *6.2*) make it trivial to
+# reference exact rules in reviews or bug tickets.
+# =============================================================================
+
+###############################################################################
+# 1  PATH GUIDELINES
+###############################################################################
+[paths]
+# 1.1  Code the agent **MAY create or modify**
+include = [
+  "src/**",
+  "scripts/**",
+  "unity/**/Assets/**/*.cs",
+  "research/scripts/**.py"
+]
+
+# 1.2  Files that are **READ-ONLY context**
+readonly = [
+  "management/architecture/**.md",
+  "research/configs/**",
+  "README.md",
+  "*.png", "*.jpg"
+]
+
+# 1.3  Files / folders the agent must **IGNORE**
+ignore = [
+  "public/UnityBuild/**",
+  "node_modules/**",
+  "research/data/**",
+  "**/*.log",
+  "**/*.tmp"
+]
+
+###############################################################################
+# 2  ARCHITECTURE DOC MAPPING
+###############################################################################
+[architecture]
+# 2.1  Master overview (SSOT)
+root = "management/architecture/overview.md"
+
+# 2.2  Deep-dive map (topic → file)
+map = {
+  "api"        : "management/architecture/API_Architecture.md",
+  "build"      : "management/architecture/Build_Architecture.md",
+  "ci"         : "management/architecture/CI_Architecture.md",
+  "deployment" : "management/architecture/Deployment_Architecture.md",
+  "directory"  : "management/architecture/Directory_Architecture.md",
+  "flow"       : "management/architecture/Flow_Architecture.md",
+  "module"     : "management/architecture/Module_Architecture.md",
+  "practices"  : "management/architecture/BestPractices_Architecture.md",
+  "release"    : "management/architecture/Release_Architecture.md",
+  "security"   : "management/architecture/Security_Architecture.md",
+  "state"      : "management/architecture/State_Management_Architecture.md",
+  "testing"    : "management/architecture/Testing_Architecture.md",
+  "wasm"       : "management/architecture/WASM_Integration_Architecture.md"
+}
+
+###############################################################################
+# 3  GIT CONVENTIONS
+###############################################################################
+[git]
+# 3.1  Branch prefixes (Conventional Commits inspired)
+branch_prefixes = {
+  "feat" : "feature/",
+  "fix"  : "fix/",
+  "doc"  : "docs/",
+  "ref"  : "refactor/"
+}
+
+# 3.2  Commit message template
+commit_template = """
+<type>(<scope>): <subject>
+
+<body>
+
+Closes: <issue-id>
+"""
+
+# 3.3  Versioning
+# • Semantic Versioning (MAJOR.MINOR.PATCH)
+# • Breaking change ⇒ commit type `feat!` or `fix!` and label `breaking`
+
+###############################################################################
+# 4  DEFAULT PROMPTS / GENERATION GUIDANCE
+###############################################################################
+[prompts]
+# 4.1  New React component
+new_component = "Use functional React + TypeScript + Tailwind; place under src/components; export default; minimal props; include unit test in src/__tests__."
+
+# 4.2  WASM binding
+wasm_binding = "Expose C functions via extern C; build with emscripten -O3 MODULARIZE=1; generate thin TS wrapper; allocate/free memory responsibly."
+
+# 4.3  **Duplication-check policy**
+# Before creating ANY new file, function, type, or import, the agent MUST:
+#   • grep the repo for an existing equivalent.
+#   • If found, reuse/extend instead of duplicating.
+#   • Document the decision in the commit body.
+
+###############################################################################
+# 5  DEBUG & ERROR-HANDLING PDCA
+###############################################################################
+[debug]
+plan  = "See section 5.1.1: provide minimal repro, expected vs actual, dependencies."
+do    = "See 5.1.2: share repro + note reusable code."
+check = "See 5.1.3: verify no duplicates, tests pass, UI intact."
+act   = "See 5.1.4: update rules to avoid recurrence."
+
+###############################################################################
+# 6  LINT & FORMAT RULES
+###############################################################################
+[lint]
+# 6.1  ESLint / Prettier configs are canonical: `.eslintrc.js`, `.prettierrc.cjs`.
+# 6.2  **Pre-commit hook** (Husky) runs `npm run lint` & `npm run format:check`.
+# 6.3  Commits that fail lint/format MUST be blocked.
+
+###############################################################################
+# 7  TEST STRATEGY
+###############################################################################
+[test]
+# 7.1  Unit tests use Vitest or Jest under `src/__tests__/**.test.ts`.
+# 7.2  Minimum coverage: 70% lines & branches (enforced in CI).
+# 7.3  Each new util / hook MUST ship with a basic test stub.
+
+###############################################################################
+# 8  PERFORMANCE BUDGETS
+###############################################################################
+[performance]
+# 8.1  WebGL viewer target ≥ 60 FPS on mid-range laptop.
+# 8.2  Individual WASM call ≤ 1 ms (avg over 1000 calls).
+# 8.3  Any PR that breaches budgets must include a perf analysis section.
+
+###############################################################################
+# 9  ACCESSIBILITY (A11y)
+###############################################################################
+[a11y]
+# 9.1  All interactive components must include `aria-label` or equivalent.
+# 9.2  Lighthouse A11y score must remain ≥ 90 in CI checks.
+
+###############################################################################
+# 10  SECURITY GUIDELINES
+###############################################################################
+[security]
+# 10.1  Validate all external inputs with Zod or equivalent schema.
+# 10.2  `fetch` only same-origin or authenticated endpoints.
+# 10.3  Strict CSP headers defined in `next.config.js`.
+
+###############################################################################
+# 11  CI / GITHUB ACTIONS
+###############################################################################
+[ci]
+# 11.1  Workflow: `lint → test → build` on every push & PR.
+# 11.2  Unity WebGL build runs **only** on version tag `v*.*.*`.
+# 11.3  Coverage & Lighthouse reports uploaded as artifacts.
+
+###############################################################################
+# 12  DEPENDENCY MANAGEMENT
+###############################################################################
+[deps]
+# 12.1  Enable Renovate (or Dependabot) for weekly checks.
+# 12.2  Major version updates require manual PR review with changelog summary.
+
+###############################################################################
+# 13  DOCS & STORYBOOK
+###############################################################################
+[docs]
+# 13.1  Storybook lives under `src/stories`; auto-deploy to GitHub Pages on `main`.
+# 13.2  Docgen comments (`/** @public */`) encouraged for exported components.
+
+###############################################################################
+# 14  ISSUE / PR TEMPLATES
+###############################################################################
+[templates]
+# 14.1  Issue template path: `.github/ISSUE_TEMPLATE.md`
+# 14.2  PR template path   : `.github/PULL_REQUEST_TEMPLATE.md`
+# 14.3  Both templates MUST include section to link relevant architecture MD.
+
+###############################################################################
+# 15  MISC
+###############################################################################
+[misc]
+# 15.1  Required Node version ≥18.0.0
+# 15.2  Package manager: npm (switch requires team consensus + rule update)
+
+###############################################################################
+# END OF FILE
+###############################################################################

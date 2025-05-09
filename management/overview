@@ -1,0 +1,125 @@
+# RealMotionEngine (RME) — Architecture Overview
+
+> **Scope** — This overview\.md is the single‑sheet entry‑point for all architecture documentation of **RealMotionEngine**. It explains the project’s purpose, high‑level design, layer responsibilities, and links to detailed specs stored alongside this file.
+
+---
+
+## 1  Project Purpose & Vision
+
+RealMotionEngine (RME) is a **browser‑first real‑time motion‑tracking and research platform**. It enables low‑latency capture of human motion via any webcam, advanced filtering/learning pipelines, and high‑fidelity 3D visualisation—all inside a modern web stack.
+
+*Key objectives*
+
+| # | Objective                                                                               |
+| - | --------------------------------------------------------------------------------------- |
+| 1 | **Sub‑100 ms end‑to‑end latency** using C++ → WASM filters on a dedicated Worker thread |
+| 2 | **Research‑ready** — reproducible experiments, metrics, versioning (DVC / MLflow)       |
+| 3 | **Plugin architecture** for filters, ML models, and render engines                      |
+| 4 | **Cross‑engine 3D** — Unity WebGL primary, Three.js fallback                            |
+
+---
+
+## 2  High‑Level Architecture
+
+```text
+┌──────────────────────────────┐
+│   ① Front‑End Layer          │ React + Next.js UI              │
+└────────┬─────────────────────┘
+         │ raw frames
+┌────────▼─────────────────────┐
+│   ② MediaPipe Component      │ 2D/3D landmarks                │
+└────────┬─────────────────────┘
+         │ landmarks
+┌────────▼─────────────────────┐
+│   ③ Filter Layer (Worker)    │ WASM plugins (Kalman, LPF…)    │
+└────────┬─────────────────────┘
+         │ smoothed data
+┌────────▼─────────────────────┐
+│   ④ Motion‑Learning Layer    │ Supervised / RL pipeline       │
+└────────┬─────────────────────┘
+         │ predictions / models
+┌────────▼─────────────────────┐
+│   ⑤ Visualisation Layer      │ Unity WebGL / Three.js         │
+└────────┬─────────────────────┘
+         │ canvas stream
+┌────────▼─────────────────────┐
+│   ⑥ Recorder & Logger        │ MediaRecorder + CSV/Parquet    │
+└────────┬─────────────────────┘
+         │ logs / video
+┌────────▼─────────────────────┐
+│   ⑦ Research Support         │ configs · notebooks · metrics  │
+└──────────────────────────────┘
+```
+
+---
+
+## 3  Layer Responsibilities
+
+| # | Layer               | Core Tech             | Responsibilities                            |
+| - | ------------------- | --------------------- | ------------------------------------------- |
+| ① | **Front‑End/UI**    | React · Next.js       | camera permissions, settings UI, state mgmt |
+| ② | **MediaPipe**       | `@mediapipe/pose`     | landmark extraction                         |
+| ③ | **Filter**          | Worker + WASM         | latency‑optimised smoothing, plugin mgr     |
+| ④ | **Motion‑Learning** | Python (TF/PyTorch)   | offline/online training, ONNX serving       |
+| ⑤ | **Visualisation**   | Unity WebGL           | 3D skeleton + mesh, accuracy heatmap        |
+| ⑥ | **Recorder/Logger** | MediaRecorder         | multi‑channel capture, file export          |
+| ⑦ | **Research**        | YAML configs, Jupyter | experiment orchestration, metrics           |
+
+---
+
+## 4  Differentiators
+
+*WASM acceleration*, *pluginised filters*, *research pipeline out‑of‑box*, *Unity‑quality visuals*, and *browser‑only install* make RME unique compared with typical JS‑based mocap demos.
+
+---
+
+## 5  Document Map (detailed specs)
+
+| Area                | File                               |
+| ------------------- | ---------------------------------- |
+| API surface         | `API_Architecture.md`              |
+| Build / CI          | `Build_Architecture.md`            |
+| Deployment          | `Deployment_Architecture.md`       |
+| Directory layout    | `Directory_Architecture.md`        |
+| Data / Control flow | `Flow_Architecture.md`             |
+| Module boundaries   | `Module_Architecture.md`           |
+| Security model      | `Security_Architecture.md`         |
+| State management    | `State_Management_Architecture.md` |
+| Testing strategy    | `Testing_Architecture.md`          |
+| WASM integration    | `WASM_Integration_Architecture.md` |
+| Best practices      | `BestPractices_Architecture.md`   |
+| Release process     | `Release_Architecture.md`         |
+
+---
+
+## 6  Quick‑Start Commands
+
+```bash
+# install deps
+npm install
+
+# run dev server
+npm run dev
+
+# build Unity WebGL (inside ./unity)
+# 1. open Unity → WebGL build target → Build & Run
+```
+## 7  Operational Conventions 🛠 *(new section)*
+| Topic                  | Rule (see `.cursorrules` for the machine-readable spec) |
+| ---------------------- | ------------------------------------------------------- |
+| **Lint / Format**      | Pre-commit hook must run `npm run lint` & `npm run format:check` |
+| **Testing**            | Vitest / Jest — _minimum_ 70 % coverage enforced in CI |
+| **CI Workflow**        | `lint → test → build`; Unity WebGL build only on version tags |
+| **Performance budgets**| WebGL ≥ 60 FPS; WASM ≤ 1 ms per call |
+| **Accessibility**      | Lighthouse A11y score ≥ 90 |
+| **Security**           | Zod validation on all external inputs; strict CSP headers |
+| **Issue / PR templates** | Templates in `.github/` must link related architecture MD |
+| **Versioning**         | Semantic Versioning; breaking changes tagged with `feat!` / `fix!` |
+---
+
+## 8  Revision History — **update**
+| Date       | Version | Notes                                      |
+| ---------- | ------- | ------------------------------------------ |
+| 2025-05-08 | v1.1    | Added **Operational Conventions** section |
+
+*Last updated : 2025‑05‑08*
