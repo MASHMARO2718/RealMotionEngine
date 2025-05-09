@@ -3,7 +3,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <vector>
-#include <emscripten.h>
+#include "emscripten.h"
 
 // A simple matrix class for the Kalman filter
 class Matrix {

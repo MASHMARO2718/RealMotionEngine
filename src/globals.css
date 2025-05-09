@@ -1,0 +1,20 @@
+/* カスタム追加スタイル - カメラビューのレスポンシブ対応 */
+.camera-container {
+  max-width: 100%;
+  overflow: hidden;
+  background-color: #000;
+  border-radius: 0.5rem;
+}
+
+.camera-container video,
+.camera-container canvas {
+  max-width: 100%;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .camera-container {
+    max-width: 320px;
+    margin: 0 auto;
+  }
+} 

@@ -1,3 +1,6 @@
+// Define a Handle type for kalman filter instances
+export type Handle = number;
+
 declare module './kalman' {
   export function createKalmanModule(): Promise<{
     _kf_create: (dimensions: number, processNoise: number, measurementNoise: number) => number;
