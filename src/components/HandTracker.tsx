@@ -40,7 +40,7 @@ export default function HandTracker({
         initializeAttemptedRef.current = true;
         
         setIsLoading(true);
-        console.log('Starting MediaPipe initialization...');
+        console.log('【デバッグ】Starting MediaPipe initialization...');
         
         // 初期化を3回まで試行
         let success = false;
@@ -49,10 +49,10 @@ export default function HandTracker({
         
         while (!success && attempts < maxAttempts) {
           attempts++;
-          console.log(`Attempt ${attempts} to initialize MediaPipe...`);
+          console.log(`【デバッグ】Attempt ${attempts} to initialize MediaPipe...`);
           
           success = await initializeHandTracking({
-            runningMode: 'VIDEO',
+            runningMode: 'IMAGE', // VIDEOからIMAGEに変更（より安定）
             minHandDetectionConfidence: 0.5,
             minHandPresenceConfidence: 0.5,
             minTrackingConfidence: 0.5,
@@ -60,7 +60,7 @@ export default function HandTracker({
           });
           
           if (!success && attempts < maxAttempts) {
-            console.log(`Retrying in 1 second... (attempt ${attempts}/${maxAttempts})`);
+            console.log(`【デバッグ】Retrying in 1 second... (attempt ${attempts}/${maxAttempts})`);
             await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機
           }
         }
@@ -68,13 +68,36 @@ export default function HandTracker({
         if (success) {
           setIsInitialized(true);
           setError(null);
-          console.log('MediaPipe initialized successfully after', attempts, 'attempts');
+          console.log('【デバッグ】MediaPipe initialized successfully after', attempts, 'attempts');
+          
+          // キャンバスが正しく描画できるか確認するためのテスト
+          setTimeout(() => {
+            const canvas = canvasRef.current;
+            if (canvas) {
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                console.log('【デバッグ】Drawing test circle on canvas');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, 2 * Math.PI);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+                ctx.font = '20px Arial';
+                ctx.fillStyle = 'white';
+                ctx.fillText('テスト描画', canvas.width / 2 - 50, canvas.height / 2);
+              } else {
+                console.error('【デバッグ】Could not get canvas context for test drawing');
+              }
+            } else {
+              console.error('【デバッグ】Canvas ref is null for test drawing');
+            }
+          }, 1000);
         } else {
-          console.error('Failed to initialize MediaPipe after', maxAttempts, 'attempts');
+          console.error('【デバッグ】Failed to initialize MediaPipe after', maxAttempts, 'attempts');
           setError(`MediaPipe初期化失敗 (${maxAttempts}回試行)`);
         }
       } catch (err) {
-        console.error('初期化エラー:', err);
+        console.error('【デバッグ】初期化エラー:', err);
         setError('MediaPipe初期化中にエラーが発生しました');
       } finally {
         setIsLoading(false);
@@ -91,12 +114,12 @@ export default function HandTracker({
   }, []);
   
   // ビデオフレームの処理
-  const handleFrame = (imageData: ImageData) => {
+  const handleFrame = (imageData: ImageData, videoElement?: HTMLVideoElement) => {
     if (!isInitialized) {
       // MediaPipeが初期化されていない場合
       if (!warningShownRef.current) {
         // 初回のみコンソールに警告を表示
-        console.warn('MediaPipe is not initialized, using fallback mode');
+        console.warn('【デバッグ】MediaPipe is not initialized, using fallback mode');
         warningShownRef.current = true;
       }
       
@@ -108,32 +131,77 @@ export default function HandTracker({
     // 警告フラグをリセット（初期化に成功した場合）
     warningShownRef.current = false;
     
-    // ハンドランドマークの検出
-    const result = detectHandLandmarks(imageData);
+    // ハンドランドマークの検出（可能であればビデオ要素を使用）
+    console.log('【デバッグ】検出開始:', videoElement ? 'videoElementを使用' : 'imageDataを使用');
+    const result = videoElement 
+      ? detectHandLandmarks(videoElement) 
+      : detectHandLandmarks(imageData);
+      
+    console.log('【デバッグ】検出結果:', result ? `手${result.landmarks?.length || 0}個検出` : '検出なし');
     setHandLandmarks(result);
     
+    // キャンバスが利用可能か確認
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.error('【デバッグ】キャンバス要素が存在しません');
+      return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error('【デバッグ】キャンバスコンテキストが取得できません');
+      return;
+    }
+    
+    // キャンバスが正しく描画できることをテスト
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 枠線を描画（キャンバスが表示されていることを確認）
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+    
+    // 常にフレーム番号を表示（キャンバスが更新されていることを確認）
+    const frameCount = (parseInt(canvas.getAttribute('data-frame') || '0') + 1) % 1000;
+    canvas.setAttribute('data-frame', frameCount.toString());
+    ctx.font = '20px Arial';
+    ctx.fillStyle = 'white';
+    ctx.fillText(`Frame: ${frameCount}`, 20, 30);
+    
     if (result && result.landmarks && result.landmarks.length > 0) {
+      console.log('【デバッグ】描画開始: 手のランドマーク');
+      // キャンバスに現在時刻を表示（処理が実行されていることを確認）
+      ctx.fillText(`手の検出: ${result.landmarks.length}個`, 20, 60);
+      
       // ジェスチャーの認識
       const gesture = recognizeHandGesture(result);
       if (gesture) {
         setCurrentGesture(gesture);
         onGestureDetected?.(gesture);
+        
+        // ジェスチャーをキャンバスに直接表示
+        ctx.fillStyle = 'green';
+        ctx.fillText(`ジェスチャー: ${gesture}`, 20, 90);
       }
       
       // 外部ハンドラーへの通知
       onHandLandmarksDetected?.(result);
       
       // キャンバスへの描画
-      drawHandLandmarks(result);
-    } else {
-      // 手が検出されない場合はキャンバスをクリア
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+      try {
+        drawHandLandmarks(result);
+        console.log('【デバッグ】描画完了');
+      } catch (err: any) {
+        console.error('【デバッグ】描画エラー:', err);
+        // エラー情報をキャンバスに表示
+        ctx.fillStyle = 'red';
+        ctx.fillText(`描画エラー: ${err.message}`, 20, 120);
       }
+    } else {
+      // 手が検出されなくても何かを描画する
+      ctx.font = '24px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText('手が検出されていません', 20, canvas.height / 2);
     }
   };
   
@@ -186,118 +254,171 @@ export default function HandTracker({
   
   // ハンドランドマークの描画
   const drawHandLandmarks = (result: HandLandmarkerResult) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // キャンバスをクリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 各検出された手について
-    result.landmarks.forEach((landmarks, handIndex) => {
-      // 手のランドマークを接続する線を描画
-      drawConnectors(ctx, landmarks, handIndex);
-      
-      // 各ランドマークを描画
-      landmarks.forEach((landmark, index) => {
-        const x = landmark.x * canvas.width;
-        const y = landmark.y * canvas.height;
-        
-        // 指先のポイントは大きく表示
-        const isFingerTip = [4, 8, 12, 16, 20].includes(index);
-        const radius = isFingerTip ? 6 : 3;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = isFingerTip ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.5)';
-        ctx.fill();
-      });
-      
-      // 指先座標の取得
-      const fingerTips = getFingerTips(result);
-      if (fingerTips) {
-        // 指先の名前を表示
-        Object.entries(fingerTips).forEach(([finger, position]) => {
-          const x = position.x * canvas.width;
-          const y = position.y * canvas.height;
-          
-          ctx.font = '12px Arial';
-          ctx.fillStyle = 'white';
-          ctx.fillText(finger, x + 10, y - 10);
-        });
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        console.error('【デバッグ】Canvas ref is null');
+        return;
       }
-    });
-  };
-  
-  // ハンドランドマークを接続する線を描画するヘルパー関数
-  const drawConnectors = (ctx: CanvasRenderingContext2D, landmarks: any[], handIndex: number) => {
-    // 指のコネクション（インデックスのペア）
-    const connections = [
-      [0, 1], [1, 2], [2, 3], [3, 4],           // 親指
-      [0, 5], [5, 6], [6, 7], [7, 8],           // 人差し指
-      [5, 9], [9, 10], [10, 11], [11, 12],      // 中指
-      [9, 13], [13, 14], [14, 15], [15, 16],    // 薬指
-      [13, 17], [17, 18], [18, 19], [19, 20],   // 小指
-      [0, 17], [5, 9], [9, 13], [13, 17]        // 手のひら
-    ];
-    
-    // 線の色（左右の手で色を変える）
-    const color = handIndex === 0 ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)';
-    
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    
-    connections.forEach(([i, j]) => {
-      const point1 = landmarks[i];
-      const point2 = landmarks[j];
       
-      const x1 = point1.x * ctx.canvas.width;
-      const y1 = point1.y * ctx.canvas.height;
-      const x2 = point2.x * ctx.canvas.width;
-      const y2 = point2.y * ctx.canvas.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('【デバッグ】Could not get canvas context');
+        return;
+      }
       
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
+      // キャンバスをクリア
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // ステータス情報
+      ctx.font = '14px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(`Frame: ${Date.now() % 10000}`, 10, 20);
+      ctx.fillText(`手の検出: ${result.landmarks.length}個`, 10, 40);
+      
+      console.log(`【デバッグ】描画: 手${result.landmarks.length}個、キャンバスサイズ=${canvas.width}x${canvas.height}`);
+      
+      // 各検出された手について
+      result.landmarks.forEach((landmarks, handIndex) => {
+        console.log(`【デバッグ】手${handIndex}: ${landmarks.length}ポイント`);
+        
+        // 単純な点として描画
+        landmarks.forEach((landmark, index) => {
+          const x = landmark.x * canvas.width;
+          const y = landmark.y * canvas.height;
+          
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, 2 * Math.PI);
+          ctx.fillStyle = 'red';
+          ctx.fill();
+        });
+      });
+    } catch (error: any) {
+      console.error('【デバッグ】描画エラー:', error.message);
+    }
   };
   
   return (
-    <div className="relative camera-container">
+    <div 
+      className="relative"
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        margin: '0 auto',
+        position: 'relative',
+        border: '2px solid #ff0000'
+      }}
+    >
+      {/* カメラ入力コンポーネント */}
       <CameraInput width={width} height={height} onFrame={handleFrame} />
       
+      {/* 手のランドマーク描画用キャンバス - 絶対位置指定 */}
       <canvas
         ref={canvasRef}
         width={width}
         height={height}
-        className="absolute top-0 left-0 pointer-events-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 1000, // 非常に高い値で必ず最前面に表示
+          pointerEvents: 'none',
+          border: '4px solid yellow',
+          boxSizing: 'border-box'
+        }}
       />
       
+      {/* ステータス表示 - 最前面に配置 */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '5px',
+          fontSize: '12px',
+          zIndex: 1001,
+          borderRadius: '4px'
+        }}
+      >
+        MediaPipe: {isInitialized ? '初期化済み' : '未初期化'}
+      </div>
+      
+      {/* 現在のジェスチャー */}
+      {currentGesture && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '5px',
+            fontSize: '12px',
+            zIndex: 1001,
+            borderRadius: '4px'
+          }}
+        >
+          検出: <span style={{ color: '#4caf50', fontWeight: 'bold' }}>{currentGesture}</span>
+        </div>
+      )}
+      
+      {/* ローディング表示 */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="text-white text-center">
-            <div className="mb-2">MediaPipe HandLandmarkerを読み込み中...</div>
-            <div className="w-12 h-12 border-4 border-t-blue-500 border-blue-200 rounded-full animate-spin mx-auto"></div>
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 1002
+        }}>
+          <div style={{ color: 'white', textAlign: 'center' }}>
+            <div style={{ marginBottom: '8px' }}>MediaPipeを読み込み中...</div>
+            <div style={{ 
+              width: '48px',
+              height: '48px',
+              border: '4px solid #3498db',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto'
+            }}></div>
           </div>
         </div>
       )}
       
+      {/* エラー表示 */}
       {error && (
-        <div className="absolute bottom-4 left-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
-          <div className="font-bold mb-1">エラー</div>
-          <div className="text-sm">{error}</div>
-          <div className="text-xs mt-2">フォールバックモードで実行中...</div>
+        <div style={{
+          position: 'absolute',
+          bottom: '16px',
+          left: '16px',
+          background: '#ffebee',
+          border: '1px solid #ef5350',
+          color: '#d32f2f',
+          padding: '12px',
+          borderRadius: '4px',
+          maxWidth: '320px',
+          zIndex: 1002
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>エラー</div>
+          <div style={{ fontSize: '14px' }}>{error}</div>
+          <div style={{ fontSize: '12px', marginTop: '8px' }}>フォールバックモードで実行中...</div>
         </div>
       )}
       
-      {currentGesture && (
-        <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded">
-          検出: <span className="font-bold text-green-400">{currentGesture}</span>
-        </div>
-      )}
+      {/* スタイルをページに直接追加 */}
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 } 

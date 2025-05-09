@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface CameraInputProps {
-  onFrame?: (imageData: ImageData) => void;
+  onFrame?: (imageData: ImageData, videoElement?: HTMLVideoElement) => void;
   width?: number;
   height?: number;
   fps?: number;
@@ -20,13 +20,6 @@ export default function CameraInput({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const frameProcessingRef = useRef(false);
-
-  const containerStyle = {
-    width: `${width}px`,
-    height: `${height}px`,
-    maxWidth: '100%',
-    position: 'relative' as const
-  };
 
   useEffect(() => {
     async function setupCamera() {
@@ -92,7 +85,7 @@ export default function CameraInput({
             const imageData = ctx.getImageData(0, 0, width, height);
             
             try {
-              onFrame(imageData);
+              onFrame(imageData, video);
             } catch (err) {
               console.error('Error processing video frame:', err);
             }
@@ -115,7 +108,15 @@ export default function CameraInput({
   }, [isStreaming, onFrame, fps, width, height]);
 
   return (
-    <div style={containerStyle} className="camera-container">
+    <div
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        maxWidth: '100%',
+        position: 'relative'
+      }}
+      className="camera-container"
+    >
       <video 
         ref={videoRef} 
         autoPlay 
@@ -126,21 +127,41 @@ export default function CameraInput({
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'cover',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          zIndex: 1
         }}
       />
       <canvas 
         ref={canvasRef} 
         width={width} 
-        height={height} 
-        className="absolute top-0 left-0 invisible"
+        height={height}
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: '100%',
-          height: '100%'
+          height: '100%',
+          zIndex: 2,
+          pointerEvents: 'none'
         }}
       />
       {error && (
-        <div className="absolute bottom-0 left-0 right-0 bg-red-100 border border-red-400 text-red-700 px-2 py-1 text-xs">
+        <div 
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'rgba(244, 67, 54, 0.8)',
+            color: 'white',
+            padding: '4px 8px',
+            fontSize: '12px',
+            zIndex: 3
+          }}
+        >
           {error}
         </div>
       )}

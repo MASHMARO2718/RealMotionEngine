@@ -15,31 +15,59 @@ let initializing = false;
 // 警告が既に表示されたかを追跡するフラグ
 let warnedAboutInitialization = false;
 
+// オリジナルのconsole.errorを保存
+const originalConsoleError = console.error;
+
+// MediaPipeのログをフィルタリングするラッパー関数
+function filterMediaPipeConsoleError() {
+  console.error = function(...args) {
+    // "INFO:" で始まるMediaPipeログは表示しない
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('INFO:')) {
+      console.log('MediaPipe INFO:', ...args); // 代わりにログとして表示
+      return;
+    }
+    
+    // その他のエラーは通常通り表示
+    originalConsoleError.apply(console, args);
+  };
+}
+
+// コンソールログラッパーを適用
+filterMediaPipeConsoleError();
+
 /**
  * MediaPipe HandLandmarkerの初期化
  */
 export async function initializeHandTracking(config: HandLandmarkConfig = {}): Promise<boolean> {
-  if (initialized) return true;
-  if (initializing) return false;
+  if (initialized) {
+    console.log('【デバッグ】MediaPipe 既に初期化済み');
+    return true;
+  }
+  if (initializing) {
+    console.log('【デバッグ】MediaPipe 初期化中...');
+    return false;
+  }
   
   try {
     initializing = true;
     
-    console.log('Initializing MediaPipe HandLandmarker...');
+    console.log('【デバッグ】MediaPipe HandLandmarker初期化開始...');
     // より安定したCDNに変更
+    console.log('【デバッグ】FilesetResolver.forVisionTasks 呼び出し中...');
     const vision = await FilesetResolver.forVisionTasks(
       'https://unpkg.com/@mediapipe/tasks-vision@0.10.3/wasm'
     );
     
-    console.log('Vision tasks loaded, creating HandLandmarker...');
+    console.log('【デバッグ】Vision tasks ロード完了, HandLandmarker作成中...');
     
     // GPU利用が指定されているか、未指定（デフォルトでCPU）の場合の設定
     const delegate = config.useGPU ? 'GPU' : 'CPU';
-    console.log(`Using ${delegate} for MediaPipe processing`);
+    console.log(`【デバッグ】Using ${delegate} for MediaPipe processing`);
     
-    // 実行モードを設定（デフォルトはVIDEO）
+    // 実行モードを設定（デフォルトはIMAGE - より安定）
     const runningMode = config.runningMode || 'IMAGE';
-    console.log(`Using ${runningMode} mode for MediaPipe HandLandmarker`);
+    console.log(`【デバッグ】Using ${runningMode} mode for MediaPipe HandLandmarker`);
+    console.log('【デバッグ】HandLandmarker.createFromOptions 呼び出し中...');
     
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
@@ -53,16 +81,17 @@ export async function initializeHandTracking(config: HandLandmarkConfig = {}): P
       numHands: 2
     });
     
+    console.log('【デバッグ】HandLandmarker生成完了:', handLandmarker ? 'success' : 'null');
     initializing = false;
     initialized = true;
-    console.log('MediaPipe HandLandmarker initialized successfully.');
+    console.log('【デバッグ】MediaPipe HandLandmarker initialized successfully.');
     return true;
   } catch (error) {
-    console.error('Error initializing MediaPipe HandLandmarker:', error);
+    console.error('【デバッグ】Error initializing MediaPipe HandLandmarker:', error);
     // より詳細なエラーログ
     if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error('【デバッグ】Error message:', error.message);
+      console.error('【デバッグ】Error stack:', error.stack);
     }
     initializing = false;
     return false;
@@ -76,8 +105,14 @@ export function detectHandLandmarks(imageData: ImageData | HTMLVideoElement): Ha
   if (!handLandmarker || !initialized) {
     // 未初期化警告は1回だけ表示
     if (!warnedAboutInitialization) {
-      console.warn('HandLandmarker not initialized. Call initializeHandTracking() first.');
+      console.warn('【デバッグ】HandLandmarker not initialized. Call initializeHandTracking() first.');
+      console.log('【デバッグ】handLandmarker:', handLandmarker ? 'exists' : 'null');
+      console.log('【デバッグ】initialized:', initialized);
       warnedAboutInitialization = true;
+      
+      // 自動的に初期化を試みる
+      console.log('【デバッグ】Attempting automatic initialization...');
+      initializeHandTracking({ runningMode: 'IMAGE' });
     }
     return null;
   }
@@ -87,19 +122,40 @@ export function detectHandLandmarks(imageData: ImageData | HTMLVideoElement): Ha
   
   try {
     // IMAGEモードでの検出
-    return handLandmarker.detect(imageData);
+    if (!(imageData instanceof ImageData) && !(imageData instanceof HTMLVideoElement)) {
+      console.error('【デバッグ】Invalid input type for detectHandLandmarks');
+      return null;
+    }
+    
+    console.log(`【デバッグ】入力データ: ${imageData instanceof ImageData ? 'ImageData' : 'HTMLVideoElement'} サイズ=${
+      imageData instanceof ImageData 
+        ? `${imageData.width}x${imageData.height}` 
+        : `${imageData.videoWidth}x${imageData.videoHeight}`
+    }`);
+    
+    // 検出実行
+    console.log('【デバッグ】handLandmarker.detect呼び出し中...');
+    const result = handLandmarker.detect(imageData);
+    console.log(`【デバッグ】検出結果:`, result ? `手${result.landmarks?.length || 0}個検出` : '検出なし');
+    return result;
   } catch (error) {
-    console.error('Error detecting hand landmarks:', error);
+    console.error('【デバッグ】Error detecting hand landmarks:', error);
+    
+    // エラーの詳細をログ
+    if (error instanceof Error) {
+      console.error('【デバッグ】Error message:', error.message);
+      console.error('【デバッグ】Error stack:', error.stack);
+    }
     
     // runningModeエラーの場合、再初期化を試みる
     if (error instanceof Error && error.message.includes('runningMode')) {
-      console.log('Attempting to reinitialize with correct runningMode...');
+      console.log('【デバッグ】Attempting to reinitialize with correct runningMode...');
       initialized = false;
       initializing = false;
       
       // 非同期で再初期化（結果は次回のdetectで使用）
       initializeHandTracking({ runningMode: 'IMAGE' }).then(success => {
-        console.log(`Reinitialization ${success ? 'succeeded' : 'failed'}`);
+        console.log(`【デバッグ】Reinitialization ${success ? 'succeeded' : 'failed'}`);
       });
     }
     
