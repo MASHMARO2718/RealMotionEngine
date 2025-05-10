@@ -131,8 +131,14 @@ export default function Home() {
               ハンドトラッキングデモ
             </Link>
             <Link 
-              href="/landmark-demo"
+              href="/pose-tracking"
               className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium"
+            >
+              ポーズトラッキング
+            </Link>
+            <Link 
+              href="/landmark-demo"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium"
             >
               ランドマーク可視化デモ
             </Link>

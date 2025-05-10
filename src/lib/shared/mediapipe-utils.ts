@@ -3,7 +3,7 @@
  * 主にランドマークの描画や座標変換などを提供します
  */
 
-import { HandLandmarkerResult } from '@mediapipe/tasks-vision';
+import { HandLandmarkerResult, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 
 // サイバーパンク風カラーテーマ
 export const CYBERPUNK_COLORS = {
@@ -26,6 +26,13 @@ export const CYBERPUNK_COLORS = {
   
   // コネクションライン用
   connection: 'rgba(0, 255, 136, 1)',   // より鮮明なネオングリーン
+  
+  // ポーズランドマーク用
+  face: 'rgba(255, 255, 0, 1)',         // 顔部分（黄色）
+  upperBody: 'rgba(0, 255, 255, 1)',    // 上半身（シアン）
+  lowerBody: 'rgba(255, 0, 255, 1)',    // 下半身（マゼンタ）
+  leftSide: 'rgba(255, 102, 0, 1)',     // 左側（オレンジ）
+  rightSide: 'rgba(0, 102, 255, 1)',    // 右側（青）
   
   // UI要素用
   background: 'rgba(5, 0, 20, 0.7)',      // 暗めのバックグラウンド
@@ -60,6 +67,20 @@ export const HAND_CONNECTIONS = [
 
 // 指先のインデックス番号
 export const FINGERTIPS = [4, 8, 12, 16, 20];
+
+// ポーズの接続関係（MediaPipe Pose Landmarker用）
+export const POSE_CONNECTIONS = [
+  // 顔
+  [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
+  // 顔と上半身の接続
+  [9, 10],
+  // 体の中心線
+  [11, 12], [12, 14], [14, 16], [11, 13], [13, 15],
+  // 腰
+  [12, 24], [11, 23],
+  // 脚
+  [24, 26], [26, 28], [28, 30], [30, 32], [23, 25], [25, 27], [27, 29], [29, 31]
+];
 
 /**
  * キャンバスに手のランドマークを描画する関数
@@ -166,10 +187,138 @@ export function drawHandLandmarks(
 }
 
 /**
+ * キャンバスにポーズランドマークを描画する関数
+ */
+export function drawPoseLandmarks(
+  ctx: CanvasRenderingContext2D,
+  result: PoseLandmarkerResult,
+  videoWidth: number,
+  videoHeight: number,
+  isMirrored: boolean = true,
+  glowSize: number = 10
+): void {
+  // 結果がない場合は早期リターン
+  if (!result || !result.landmarks || result.landmarks.length === 0) {
+    return;
+  }
+  
+  // 最初の検出された人物のみ描画
+  const landmarks = result.landmarks[0];
+  
+  // スキップする手の平の3点（両腕）
+  const skipIndices = [17, 19, 21, 18, 20, 22];
+
+  // 接続線を描画
+  ctx.lineWidth = 4; // 太めの線
+  
+  // ポーズの接続線を描画
+  for (const connection of POSE_CONNECTIONS) {
+    const [start, end] = connection;
+    // スキップ対象の点を含む接続は描画しない
+    if (skipIndices.includes(start) || skipIndices.includes(end)) continue;
+    
+    // 接続位置の取得と変換
+    const startPoint = transformLandmark(landmarks[start], videoWidth, videoHeight, isMirrored);
+    const endPoint = transformLandmark(landmarks[end], videoWidth, videoHeight, isMirrored);
+    
+    // パーツに応じた色を設定
+    let lineColor = CYBERPUNK_COLORS.connection;
+    
+    // 顔の部分
+    if (start <= 10 && end <= 10) {
+      lineColor = CYBERPUNK_COLORS.face;
+    } 
+    // 左側の腕や脚
+    else if ([11, 13, 15, 23, 25, 27, 29, 31].includes(start) || 
+             [11, 13, 15, 23, 25, 27, 29, 31].includes(end)) {
+      lineColor = CYBERPUNK_COLORS.leftSide;
+    } 
+    // 右側の腕や脚
+    else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(start) || 
+             [12, 14, 16, 24, 26, 28, 30, 32].includes(end)) {
+      lineColor = CYBERPUNK_COLORS.rightSide;
+    }
+    
+    // グラデーション効果を追加
+    const gradient = ctx.createLinearGradient(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+    gradient.addColorStop(0, lineColor);
+    gradient.addColorStop(1, adjustColor(lineColor, 30)); // 少し明るい色に
+    
+    // 接続線の描画
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(endPoint.x, endPoint.y);
+    
+    // グラデーションの接続線
+    ctx.strokeStyle = gradient;
+    
+    // 線に発光効果を追加
+    ctx.shadowColor = lineColor;
+    ctx.shadowBlur = 8;
+    
+    ctx.stroke();
+    
+    // 影の効果をリセット
+    ctx.shadowBlur = 0;
+  }
+  
+  // ランドマークを描画
+  landmarks.forEach((landmark, index) => {
+    // 可視性が低いランドマークはスキップ
+    if (landmark.visibility !== undefined && landmark.visibility < 0.5) {
+      return;
+    }
+    // スキップ対象の点は描画しない
+    if (skipIndices.includes(index)) return;
+    
+    const point = transformLandmark(landmark, videoWidth, videoHeight, isMirrored);
+    
+    // ランドマークの種類に応じたサイズと色
+    let pointSize = 5;
+    let pointColor = CYBERPUNK_COLORS.connection;
+    
+    // 重要なランドマーク（頭、肩、腰、手首、足首）にはより大きなサイズ
+    const keyPoints = [0, 11, 12, 23, 24, 15, 16, 27, 28];
+    if (keyPoints.includes(index)) {
+      pointSize = 8;
+    }
+    
+    // 部位ごとに色を変える
+    if (index <= 10) { // 顔
+      pointColor = CYBERPUNK_COLORS.face;
+    } else if ([11, 13, 15, 23, 25, 27, 29, 31].includes(index)) { // 左側
+      pointColor = CYBERPUNK_COLORS.leftSide;
+    } else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(index)) { // 右側
+      pointColor = CYBERPUNK_COLORS.rightSide;
+    }
+    
+    // グローエフェクト
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, glowSize * 0.8, 0, 2 * Math.PI);
+    ctx.fillStyle = adjustColor(pointColor, 0, 0.4); // 透明度を下げた同じ色
+    ctx.fill();
+    
+    // ランドマーク自体を描画
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, pointSize, 0, 2 * Math.PI);
+    ctx.fillStyle = pointColor;
+    
+    // 発光効果を追加
+    ctx.shadowColor = pointColor;
+    ctx.shadowBlur = 10;
+    
+    ctx.fill();
+    
+    // 影の効果をリセット
+    ctx.shadowBlur = 0;
+  });
+}
+
+/**
  * ランドマーク座標をキャンバス座標に変換
  */
 export function transformLandmark(
-  landmark: { x: number, y: number, z: number },
+  landmark: { x: number, y: number, z?: number, visibility?: number },
   videoWidth: number,
   videoHeight: number,
   isMirrored: boolean = true
@@ -182,6 +331,35 @@ export function transformLandmark(
   const y = landmark.y * videoHeight;
   
   return { x, y };
+}
+
+/**
+ * 色を調整するヘルパー関数
+ * @param color - 調整する色（rgba形式）
+ * @param brightnessAdjust - 明るさの調整値（-255〜255）
+ * @param alphaAdjust - 不透明度の調整値（0.0〜1.0）
+ */
+function adjustColor(color: string, brightnessAdjust: number = 0, alphaAdjust?: number): string {
+  // rgba(r, g, b, a)形式の色を分解
+  const rgba = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([.\d]+))?\)/);
+  if (!rgba) return color;
+  
+  let r = parseInt(rgba[1], 10);
+  let g = parseInt(rgba[2], 10);
+  let b = parseInt(rgba[3], 10);
+  let a = rgba[4] ? parseFloat(rgba[4]) : 1;
+  
+  // 明るさを調整
+  r = Math.max(0, Math.min(255, r + brightnessAdjust));
+  g = Math.max(0, Math.min(255, g + brightnessAdjust));
+  b = Math.max(0, Math.min(255, b + brightnessAdjust));
+  
+  // 不透明度を調整（指定された場合）
+  if (alphaAdjust !== undefined) {
+    a = alphaAdjust;
+  }
+  
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
 /**
@@ -248,11 +426,23 @@ export function drawScanningMessage(
   ctx.fillStyle = CYBERPUNK_COLORS.text;
   
   // テキストの表示
-  const currentTime = Date.now();
-  const blinkRate = (currentTime % 1000) < 500;
-  const message = blinkRate ? 'SCANNING FOR HAND INPUT' : 'SCANNING FOR HAND INPUT_';
+  ctx.fillText('SCANNING FOR HAND INPUT', width / 2, height / 2);
   
-  ctx.fillText(message, width / 2, height / 2);
+  // 現在時刻をミリ秒で取得
+  const now = Date.now();
+  
+  // スキャン線アニメーション（上下に移動する線）
+  const lineY = height / 2 + Math.sin(now / 500) * 30; // サイン波で上下に移動
+  
+  // スキャン線を描画
+  ctx.beginPath();
+  ctx.moveTo(0, lineY);
+  ctx.lineTo(width, lineY);
+  ctx.strokeStyle = CYBERPUNK_COLORS.accent;
+  ctx.shadowColor = CYBERPUNK_COLORS.accent;
+  ctx.shadowBlur = 15;
+  ctx.lineWidth = 2;
+  ctx.stroke();
   
   ctx.restore();
 } 
