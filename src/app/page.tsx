@@ -142,6 +142,12 @@ export default function Home() {
             >
               ランドマーク可視化デモ
             </Link>
+            <Link 
+              href="/multi-tracking"
+              className="px-4 py-2 bg-pink-600 hover:bg-pink-500 rounded-lg text-sm font-medium"
+            >
+              複合トラッキング
+            </Link>
           </div>
         </div>
         <ul className="list-disc pl-5 space-y-2 text-cyan-100">

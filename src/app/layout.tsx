@@ -1,17 +1,21 @@
-// metadataをエクスポートするためのファイル
-import type { Metadata } from 'next';
+'use client';
+
 import { Inter } from 'next/font/google';
 import './globals.css';
 import ErrorSuppressor from '../components/shared/ErrorSuppressor';
+import { MantineProvider, createTheme } from '@mantine/core';
+import '@mantine/core/styles.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'RealMotionEngine',
-  description: 'Browser-first real-time motion-tracking and research platform',
-};
+// ダークテーマの設定
+const theme = createTheme({
+  primaryColor: 'cyan',
+  defaultRadius: 'md',
+  fontFamily: inter.style.fontFamily,
+});
 
-// サーバーコンポーネントとしてのレイアウト
+// クライアントコンポーネントとしてのレイアウト
 export default function RootLayout({
   children,
 }: {
@@ -20,9 +24,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={inter.className}>
-        <ErrorSuppressor>
-          {children}
-        </ErrorSuppressor>
+        <MantineProvider theme={theme} defaultColorScheme="dark">
+          <ErrorSuppressor>
+            {children}
+          </ErrorSuppressor>
+        </MantineProvider>
       </body>
     </html>
   );
