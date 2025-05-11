@@ -4,8 +4,7 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import Grid from '@mui/material/Grid';
-import { blue, indigo, cyan } from '@mui/material/colors';
+import { blue, cyan } from '@mui/material/colors';
 import { SportsHandball, DirectionsRun, Face } from '@mui/icons-material';
 import { initializeMediaPipePoseTracking, detectPoseLandmarks, disposeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { initializeMediaPipeHandTracking, detectHandLandmarks, disposeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
@@ -122,6 +121,15 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
     }
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    if (
+      canvas.width === 0 ||
+      canvas.height === 0 ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      requestRef.current = requestAnimationFrame(runTracking);
+      return;
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       requestRef.current = requestAnimationFrame(runTracking);
@@ -208,70 +216,75 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
   };
 
   return (
-    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-      <Card sx={{ background: '#fff', border: '1.5px solid #e3e3e3', boxShadow: '0 0 24px #e3e3e3', borderRadius: 3, maxWidth: 640, width: '100%', p: 3, mb: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <Box sx={{ position: 'relative', width, height, borderRadius: 2, boxShadow: '0 0 16px #1976d222, 0 0 0 2px #1976d2' }}>
-            <video
-              ref={videoRef}
-              style={{ display: 'none' }}
-              width={width}
-              height={height}
-              playsInline
-              muted
-            />
-            <canvas
-              ref={canvasRef}
-              width={width}
-              height={height}
-              style={{ borderRadius: 8, border: '2px solid #1976d2', background: '#f5f7fa' }}
-            />
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 4 }}>
+      {/* 右側：カメラとトグル */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <Card sx={{ background: '#fff', border: '1.5px solid #e3e3e3', boxShadow: '0 0 24px #e3e3e3', borderRadius: 3, maxWidth: width, width: width, p: 3, mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Box sx={{ position: 'relative', width, height, borderRadius: 2, boxShadow: '0 0 16px #1976d222, 0 0 0 2px #1976d2' }}>
+              <video
+                ref={videoRef}
+                style={{ display: 'none' }}
+                width={width}
+                height={height}
+                playsInline
+                muted
+              />
+              <canvas
+                ref={canvasRef}
+                width={width}
+                height={height}
+                style={{ borderRadius: 8, border: '2px solid #1976d2', background: '#f5f7fa' }}
+              />
+            </Box>
           </Box>
-        </Box>
-        <Grid container spacing={2} justifyContent="center">
+        </Card>
+        {/* トグルを横一列で並べる */}
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: width }}>
           {Object.entries(trackerStates).map(([name, state]) => {
             const info = TRACKER_INFOS[name as keyof TrackerStates];
             return (
-              <Grid item xs={12} sm={4} key={name}>
-                <Card sx={{ background: '#f5f7fa', border: `1.5px solid ${info.color}`, boxShadow: `0 0 8px ${info.color}22`, borderRadius: 2, p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    {info.icon}
-                    <Typography variant="subtitle1" sx={{ color: info.color, fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1 }}>{info.label}</Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{ color: '#555', mb: 1 }}>{info.description}</Typography>
-                  <ToggleButtonGroup
-                    exclusive
-                    fullWidth
-                    value={state.detecting ? (state.enabled ? 'detect_draw' : 'detect_only') : 'stop'}
-                    onChange={(_, value: string | null) => {
-                      switch (value) {
-                        case 'detect_draw':
-                          handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
-                          handleTrackerChange(name as keyof TrackerStates, 'enabled', true);
-                          break;
-                        case 'detect_only':
-                          handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
-                          handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
-                          break;
-                        case 'stop':
-                          handleTrackerChange(name as keyof TrackerStates, 'detecting', false);
-                          handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
-                          break;
-                      }
-                    }}
-                    sx={{ mt: 1 }}
-                  >
-                    <ToggleButton value="detect_draw">Detect & Draw</ToggleButton>
-                    <ToggleButton value="detect_only">Detect Only</ToggleButton>
-                    <ToggleButton value="stop">Off</ToggleButton>
-                  </ToggleButtonGroup>
-                </Card>
-              </Grid>
+              <Card key={name} sx={{ background: '#f5f7fa', border: `1.5px solid ${info.color}`, boxShadow: `0 0 8px ${info.color}22`, borderRadius: 2, p: 2, flex: 1, minWidth: 220, maxWidth: 260 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {info.icon}
+                  <Typography variant="subtitle1" sx={{ color: info.color, fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1 }}>{info.label}</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: '#555', mb: 1 }}>{info.description}</Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  value={state.detecting ? (state.enabled ? 'detect_draw' : 'detect_only') : 'stop'}
+                  onChange={(_, value: string | null) => {
+                    const v = value ?? 'stop';
+                    switch (v) {
+                      case 'detect_draw':
+                        handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                        handleTrackerChange(name as keyof TrackerStates, 'enabled', true);
+                        break;
+                      case 'detect_only':
+                        handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                        handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                        break;
+                      case 'stop':
+                        handleTrackerChange(name as keyof TrackerStates, 'detecting', false);
+                        handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                        break;
+                    }
+                  }}
+                  sx={{ mt: 1 }}
+                >
+                  <ToggleButton value="detect_draw">Detect & Draw</ToggleButton>
+                  <ToggleButton value="detect_only">Detect Only</ToggleButton>
+                  <ToggleButton value="stop">Off</ToggleButton>
+                </ToggleButtonGroup>
+              </Card>
             );
           })}
-        </Grid>
+        </Box>
         {error && <Typography color="error" mt={2}>{error}</Typography>}
-      </Card>
+      </Box>
+      {/* 左側は空白 or 今後の拡張用 */}
+      <Box sx={{ flex: 1 }} />
     </Box>
   );
 } 
