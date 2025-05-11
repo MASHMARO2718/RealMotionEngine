@@ -1,18 +1,33 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Checkbox, Group, Stack } from '@mantine/core';
+import { Checkbox, Group, Stack, SegmentedControl } from '@mantine/core';
 import { initializeMediaPipePoseTracking, detectPoseLandmarks, disposeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { initializeMediaPipeHandTracking, detectHandLandmarks, disposeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
 import { initializeMediaPipeFaceTracking, detectFaceLandmarks, disposeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
 import { drawPoseLandmarks, drawHandLandmarks, CYBERPUNK_COLORS } from '../../lib/shared/mediapipe-utils';
 
+type TrackerState = {
+  enabled: boolean;  // 描画の有効/無効
+  detecting: boolean;  // 検出の有効/無効
+};
+
+type TrackerStates = {
+  pose: TrackerState;
+  hand: TrackerState;
+  face: TrackerState;
+};
+
 export default function MultiTracker({ width = 640, height = 480, glowSize = 15 }) {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState(null);
-  const [activeTrackers, setActiveTrackers] = useState(['pose', 'hand', 'face']);
-  const requestRef = useRef(null);
+  const [error, setError] = useState<string | null>(null);
+  const [trackerStates, setTrackerStates] = useState<TrackerStates>({
+    pose: { enabled: true, detecting: true },
+    hand: { enabled: true, detecting: true },
+    face: { enabled: true, detecting: true }
+  });
+  const requestRef = useRef<number | null>(null);
 
   // 初期化
   useEffect(() => {
@@ -31,7 +46,7 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject;
+        const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
         videoRef.current.srcObject = null;
       }
@@ -64,7 +79,7 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
   }, [width, height]);
 
   // トラッキング＆描画
-  const runTracking = useCallback((timestamp) => {
+  const runTracking = useCallback((timestamp: number) => {
     if (!isInitialized || !isRunning || !videoRef.current || !canvasRef.current) {
       requestRef.current = requestAnimationFrame(runTracking);
       return;
@@ -86,49 +101,60 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.restore();
+
     // pose
-    if (activeTrackers.includes('pose')) {
+    if (trackerStates.pose.detecting) {
       detectPoseLandmarks(video, Math.floor(timestamp)).then(result => {
+        // 検出+描画モードのみ描画
         if (result && result.landmarks && result.landmarks.length > 0) {
-          drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
+          if (trackerStates.pose.enabled) {
+            drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
+          }
         }
       });
     }
+
     // hand
-    if (activeTrackers.includes('hand')) {
+    if (trackerStates.hand.detecting) {
       detectHandLandmarks(video, Math.floor(timestamp)).then(result => {
         if (result && result.landmarks && result.landmarks.length > 0) {
-          drawHandLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
+          if (trackerStates.hand.enabled) {
+            drawHandLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
+          }
         }
       });
     }
+
     // face
-    if (activeTrackers.includes('face')) {
+    if (trackerStates.face.detecting) {
       detectFaceLandmarks(video, Math.floor(timestamp)).then(result => {
         if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
-          const landmarks = result.faceLandmarks[0];
-          ctx.save();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = CYBERPUNK_COLORS.accent;
-          ctx.fillStyle = CYBERPUNK_COLORS.accent;
-          for (const point of landmarks) {
-            const mirroredX = canvas.width - point.x * canvas.width;
-            const y = point.y * canvas.height;
-            ctx.beginPath();
-            ctx.arc(mirroredX, y, glowSize, 0, 2 * Math.PI);
-            ctx.globalAlpha = 0.2;
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-            ctx.beginPath();
-            ctx.arc(mirroredX, y, 3, 0, 2 * Math.PI);
-            ctx.fill();
+          if (trackerStates.face.enabled) {
+            const landmarks = result.faceLandmarks[0];
+            ctx.save();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = CYBERPUNK_COLORS.accent;
+            ctx.fillStyle = CYBERPUNK_COLORS.accent;
+            for (const point of landmarks) {
+              const mirroredX = canvas.width - point.x * canvas.width;
+              const y = point.y * canvas.height;
+              ctx.beginPath();
+              ctx.arc(mirroredX, y, glowSize, 0, 2 * Math.PI);
+              ctx.globalAlpha = 0.2;
+              ctx.fill();
+              ctx.globalAlpha = 1.0;
+              ctx.beginPath();
+              ctx.arc(mirroredX, y, 3, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+            ctx.restore();
           }
-          ctx.restore();
         }
       });
     }
+
     requestRef.current = requestAnimationFrame(runTracking);
-  }, [isInitialized, isRunning, activeTrackers, glowSize]);
+  }, [isInitialized, isRunning, trackerStates, glowSize]);
 
   useEffect(() => {
     if (isInitialized && isRunning && !requestRef.current) {
@@ -142,15 +168,19 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     };
   }, [isInitialized, isRunning, runTracking]);
 
-  // チェックボックスのON/OFF管理
-  const handleToggle = (name) => {
-    setActiveTrackers(prev =>
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
+  // トラッカーの状態を更新
+  const handleTrackerChange = (name: keyof TrackerStates, type: 'enabled' | 'detecting', value: boolean) => {
+    setTrackerStates(prev => ({
+      ...prev,
+      [name]: {
+        ...prev[name],
+        [type]: value
+      }
+    }));
   };
 
   return (
-    <Stack align="center" spacing="md">
+    <Stack align="center" gap="md">
       <div style={{ position: 'relative', width, height }}>
         <video
           ref={videoRef}
@@ -167,23 +197,37 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
           style={{ borderRadius: 12, border: '2px solid #0ff', background: 'transparent' }}
         />
       </div>
-      <Group>
-        <Checkbox
-          label="Pose"
-          checked={activeTrackers.includes('pose')}
-          onChange={() => handleToggle('pose')}
-        />
-        <Checkbox
-          label="Hand"
-          checked={activeTrackers.includes('hand')}
-          onChange={() => handleToggle('hand')}
-        />
-        <Checkbox
-          label="Face"
-          checked={activeTrackers.includes('face')}
-          onChange={() => handleToggle('face')}
-        />
-      </Group>
+      <Stack gap="xs">
+        {Object.entries(trackerStates).map(([name, state]) => (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ width: '80px', textTransform: 'capitalize' }}>{name}</span>
+            <SegmentedControl
+              data={[
+                { label: '検出+描画', value: 'detect_draw' },
+                { label: '検出のみ', value: 'detect_only' },
+                { label: '停止', value: 'stop' }
+              ]}
+              value={state.detecting ? (state.enabled ? 'detect_draw' : 'detect_only') : 'stop'}
+              onChange={(value) => {
+                switch (value) {
+                  case 'detect_draw':
+                    handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                    handleTrackerChange(name as keyof TrackerStates, 'enabled', true);
+                    break;
+                  case 'detect_only':
+                    handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                    handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                    break;
+                  case 'stop':
+                    handleTrackerChange(name as keyof TrackerStates, 'detecting', false);
+                    handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                    break;
+                }
+              }}
+            />
+          </div>
+        ))}
+      </Stack>
       {error && <div style={{ color: 'red' }}>{error}</div>}
     </Stack>
   );
