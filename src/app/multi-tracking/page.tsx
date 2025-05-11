@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Box from '@mui/material/Box';
+import DummyBox from '../../components/layout/DummyBox';
 
 // クライアントサイドのみでレンダリングする必要がある
 const MultiTracker = dynamic(
@@ -11,8 +12,17 @@ const MultiTracker = dynamic(
 
 export default function MultiTrackingPage() {
   return (
-    <Box sx={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 0 }}>
-      <MultiTracker width={560} height={420} />
+    <Box sx={{ display: 'flex', flexDirection: 'row', p: 4, pl: 12, minHeight: '100vh', background: '#fff', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+      <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <MultiTracker width={560} height={420} />
+      </Box>
+      <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <DummyBox label={"3D Model\nthrough Unity"} width={560} height={420} />
+        <DummyBox label={"Recorder UI"} width={560} height={120} sx={{ mt: 2 }} />
+      </Box>
+      <Box sx={{ width: 220, minWidth: 220, maxWidth: 220, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <DummyBox label={"Analyzed body data"} width={220} height={540} />
+      </Box>
     </Box>
   );
 } 
