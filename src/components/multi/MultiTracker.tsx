@@ -43,14 +43,14 @@ const TRACKER_INFOS: Record<keyof TrackerStates, TrackerInfo> = {
     icon: <SportsHandball fontSize="small" />,
     color: '#0288d1',
     muiColor: cyan[700],
-    description: 'Detect hand landmarks',
+    description: 'Detect hand\nlandmarks',
   },
   face: {
     label: 'Face',
     icon: <Face fontSize="small" />,
     color: '#00bcd4',
     muiColor: cyan[400],
-    description: 'Detect face landmarks',
+    description: 'Detect face\nlandmarks',
   },
 };
 
@@ -240,16 +240,28 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
           </Box>
         </Card>
         {/* トグルを横一列で並べる */}
-        <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: width }}>
+        <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, width: width }}>
           {Object.entries(trackerStates).map(([name, state]) => {
             const info = TRACKER_INFOS[name as keyof TrackerStates];
             return (
-              <Card key={name} sx={{ background: '#f5f7fa', border: `1.5px solid ${info.color}`, boxShadow: `0 0 8px ${info.color}22`, borderRadius: 2, p: 2, flex: 1, minWidth: 220, maxWidth: 260 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Card key={name} sx={{
+                background: '#f5f7fa',
+                border: `1.5px solid ${info.color}`,
+                boxShadow: `0 0 8px ${info.color}22`,
+                borderRadius: 2,
+                p: 1.2,
+                flex: 1,
+                minWidth: 0,
+                maxWidth: `${width / 3 - 8}px`, // gap=1=8px
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                   {info.icon}
-                  <Typography variant="subtitle1" sx={{ color: info.color, fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1 }}>{info.label}</Typography>
+                  <Typography variant="subtitle2" sx={{ color: info.color, fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1, fontSize: '1.05rem' }}>{info.label}</Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: '#555', mb: 1 }}>{info.description}</Typography>
+                <Typography variant="body2" sx={{ color: '#555', mb: 0.5, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>{info.description}</Typography>
                 <ToggleButtonGroup
                   exclusive
                   fullWidth
@@ -271,11 +283,11 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
                         break;
                     }
                   }}
-                  sx={{ mt: 1 }}
+                  sx={{ mt: 0.5 }}
                 >
-                  <ToggleButton value="detect_draw">Detect & Draw</ToggleButton>
-                  <ToggleButton value="detect_only">Detect Only</ToggleButton>
-                  <ToggleButton value="stop">Off</ToggleButton>
+                  <ToggleButton value="detect_draw" sx={{ fontSize: '0.68rem', minWidth: 0, px: 0.5, py: 0.4 }}>Detect & Draw</ToggleButton>
+                  <ToggleButton value="detect_only" sx={{ fontSize: '0.68rem', minWidth: 0, px: 0.5, py: 0.4 }}>Detect Only</ToggleButton>
+                  <ToggleButton value="stop" sx={{ fontSize: '0.68rem', minWidth: 0, px: 0.5, py: 0.4 }}>Off</ToggleButton>
                 </ToggleButtonGroup>
               </Card>
             );
