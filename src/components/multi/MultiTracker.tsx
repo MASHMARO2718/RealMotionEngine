@@ -1,13 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Checkbox, Group, Stack, SegmentedControl } from '@mantine/core';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Grid from '@mui/material/Grid';
+import { blue, indigo, cyan } from '@mui/material/colors';
+import { SportsHandball, DirectionsRun, Face } from '@mui/icons-material';
 import { initializeMediaPipePoseTracking, detectPoseLandmarks, disposeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { initializeMediaPipeHandTracking, detectHandLandmarks, disposeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
 import { initializeMediaPipeFaceTracking, detectFaceLandmarks, disposeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
 import { drawPoseLandmarks, drawHandLandmarks, CYBERPUNK_COLORS } from '../../lib/shared/mediapipe-utils';
 
 type TrackerState = {
-  enabled: boolean;  // 描画の有効/無効
-  detecting: boolean;  // 検出の有効/無効
+  enabled: boolean;
+  detecting: boolean;
 };
 
 type TrackerStates = {
@@ -16,7 +23,39 @@ type TrackerStates = {
   face: TrackerState;
 };
 
-export default function MultiTracker({ width = 640, height = 480, glowSize = 15 }) {
+type TrackerInfo = {
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  muiColor: string;
+  description: string;
+};
+
+const TRACKER_INFOS: Record<keyof TrackerStates, TrackerInfo> = {
+  pose: {
+    label: 'Pose',
+    icon: <DirectionsRun fontSize="small" />,
+    color: '#1976d2',
+    muiColor: blue[700],
+    description: 'Detect body pose landmarks',
+  },
+  hand: {
+    label: 'Hand',
+    icon: <SportsHandball fontSize="small" />,
+    color: '#0288d1',
+    muiColor: cyan[700],
+    description: 'Detect hand landmarks',
+  },
+  face: {
+    label: 'Face',
+    icon: <Face fontSize="small" />,
+    color: '#00bcd4',
+    muiColor: cyan[400],
+    description: 'Detect face landmarks',
+  },
+};
+
+export default function MultiTracker({ width = 560, height = 420, glowSize = 15 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -29,7 +68,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
   });
   const requestRef = useRef<number | null>(null);
 
-  // 初期化
   useEffect(() => {
     async function init() {
       try {
@@ -39,7 +77,7 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
         setIsInitialized(true);
         await setupCamera();
       } catch (err) {
-        setError('初期化エラー: ' + (err instanceof Error ? err.message : String(err)));
+        setError('Initialization error: ' + (err instanceof Error ? err.message : String(err)));
       }
     }
     init();
@@ -56,7 +94,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     };
   }, []);
 
-  // カメラセットアップ
   const setupCamera = useCallback(async () => {
     if (!videoRef.current) return;
     try {
@@ -74,11 +111,10 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
         }
       };
     } catch (err) {
-      setError('カメラエラー: ' + (err instanceof Error ? err.message : String(err)));
+      setError('Camera error: ' + (err instanceof Error ? err.message : String(err)));
     }
   }, [width, height]);
 
-  // トラッキング＆描画
   const runTracking = useCallback((timestamp: number) => {
     if (!isInitialized || !isRunning || !videoRef.current || !canvasRef.current) {
       requestRef.current = requestAnimationFrame(runTracking);
@@ -102,10 +138,8 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.restore();
 
-    // pose
     if (trackerStates.pose.detecting) {
       detectPoseLandmarks(video, Math.floor(timestamp)).then(result => {
-        // 検出+描画モードのみ描画
         if (result && result.landmarks && result.landmarks.length > 0) {
           if (trackerStates.pose.enabled) {
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
@@ -113,8 +147,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
         }
       });
     }
-
-    // hand
     if (trackerStates.hand.detecting) {
       detectHandLandmarks(video, Math.floor(timestamp)).then(result => {
         if (result && result.landmarks && result.landmarks.length > 0) {
@@ -124,8 +156,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
         }
       });
     }
-
-    // face
     if (trackerStates.face.detecting) {
       detectFaceLandmarks(video, Math.floor(timestamp)).then(result => {
         if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
@@ -152,7 +182,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
         }
       });
     }
-
     requestRef.current = requestAnimationFrame(runTracking);
   }, [isInitialized, isRunning, trackerStates, glowSize]);
 
@@ -168,7 +197,6 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
     };
   }, [isInitialized, isRunning, runTracking]);
 
-  // トラッカーの状態を更新
   const handleTrackerChange = (name: keyof TrackerStates, type: 'enabled' | 'detecting', value: boolean) => {
     setTrackerStates(prev => ({
       ...prev,
@@ -180,55 +208,70 @@ export default function MultiTracker({ width = 640, height = 480, glowSize = 15 
   };
 
   return (
-    <Stack align="center" gap="md">
-      <div style={{ position: 'relative', width, height }}>
-        <video
-          ref={videoRef}
-          style={{ display: 'none' }}
-          width={width}
-          height={height}
-          playsInline
-          muted
-        />
-        <canvas
-          ref={canvasRef}
-          width={width}
-          height={height}
-          style={{ borderRadius: 12, border: '2px solid #0ff', background: 'transparent' }}
-        />
-      </div>
-      <Stack gap="xs">
-        {Object.entries(trackerStates).map(([name, state]) => (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ width: '80px', textTransform: 'capitalize' }}>{name}</span>
-            <SegmentedControl
-              data={[
-                { label: '検出+描画', value: 'detect_draw' },
-                { label: '検出のみ', value: 'detect_only' },
-                { label: '停止', value: 'stop' }
-              ]}
-              value={state.detecting ? (state.enabled ? 'detect_draw' : 'detect_only') : 'stop'}
-              onChange={(value) => {
-                switch (value) {
-                  case 'detect_draw':
-                    handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
-                    handleTrackerChange(name as keyof TrackerStates, 'enabled', true);
-                    break;
-                  case 'detect_only':
-                    handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
-                    handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
-                    break;
-                  case 'stop':
-                    handleTrackerChange(name as keyof TrackerStates, 'detecting', false);
-                    handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
-                    break;
-                }
-              }}
+    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <Card sx={{ background: '#fff', border: '1.5px solid #e3e3e3', boxShadow: '0 0 24px #e3e3e3', borderRadius: 3, maxWidth: 640, width: '100%', p: 3, mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Box sx={{ position: 'relative', width, height, borderRadius: 2, boxShadow: '0 0 16px #1976d222, 0 0 0 2px #1976d2' }}>
+            <video
+              ref={videoRef}
+              style={{ display: 'none' }}
+              width={width}
+              height={height}
+              playsInline
+              muted
             />
-          </div>
-        ))}
-      </Stack>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-    </Stack>
+            <canvas
+              ref={canvasRef}
+              width={width}
+              height={height}
+              style={{ borderRadius: 8, border: '2px solid #1976d2', background: '#f5f7fa' }}
+            />
+          </Box>
+        </Box>
+        <Grid container spacing={2} justifyContent="center">
+          {Object.entries(trackerStates).map(([name, state]) => {
+            const info = TRACKER_INFOS[name as keyof TrackerStates];
+            return (
+              <Grid item xs={12} sm={4} key={name}>
+                <Card sx={{ background: '#f5f7fa', border: `1.5px solid ${info.color}`, boxShadow: `0 0 8px ${info.color}22`, borderRadius: 2, p: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    {info.icon}
+                    <Typography variant="subtitle1" sx={{ color: info.color, fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1 }}>{info.label}</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: '#555', mb: 1 }}>{info.description}</Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={state.detecting ? (state.enabled ? 'detect_draw' : 'detect_only') : 'stop'}
+                    onChange={(_, value: string | null) => {
+                      switch (value) {
+                        case 'detect_draw':
+                          handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                          handleTrackerChange(name as keyof TrackerStates, 'enabled', true);
+                          break;
+                        case 'detect_only':
+                          handleTrackerChange(name as keyof TrackerStates, 'detecting', true);
+                          handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                          break;
+                        case 'stop':
+                          handleTrackerChange(name as keyof TrackerStates, 'detecting', false);
+                          handleTrackerChange(name as keyof TrackerStates, 'enabled', false);
+                          break;
+                      }
+                    }}
+                    sx={{ mt: 1 }}
+                  >
+                    <ToggleButton value="detect_draw">Detect & Draw</ToggleButton>
+                    <ToggleButton value="detect_only">Detect Only</ToggleButton>
+                    <ToggleButton value="stop">Off</ToggleButton>
+                  </ToggleButtonGroup>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+        {error && <Typography color="error" mt={2}>{error}</Typography>}
+      </Card>
+    </Box>
   );
 } 
