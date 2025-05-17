@@ -1,0 +1,534 @@
+Using pre-set license
+Built from '2022.3/release' branch; Version is '2022.3.61f1 (6c53ebaf375d) revision 7099371'; Using compiler version '192829333'; Build Type 'Release'
+OS: 'Windows 11  (10.0.26100) 64bit Core' Language: 'ja' Physical Memory: 16087 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1, IsPro: 1
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\2022.3.61f1\Editor\Unity.exe
+-adb2
+-batchMode
+-noUpm
+-name
+AssetImportWorker0
+-projectPath
+C:/projects/RealMotionEngine/unity/My project
+-logFile
+Logs/AssetImportWorker0.log
+-srvPort
+62719
+Successfully changed project path to: C:/projects/RealMotionEngine/unity/My project
+C:/projects/RealMotionEngine/unity/My project
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [6732]  Target information:
+
+Player connection [6732]  * "[IP] 192.168.0.11 [Port] 0 [Flags] 2 [Guid] 2007387628 [EditorId] 2007387628 [Version] 1048832 [Id] WindowsEditor(7,MSI) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [6732] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [6732] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+Refreshing native plugins compatible for Editor in 6.39 ms, found 3 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 2022.3.61f1 (6c53ebaf375d)
+[Subsystems] Discovering subsystems at path C:/Program Files/Unity/Hub/Editor/2022.3.61f1/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path C:/projects/RealMotionEngine/unity/My project/Assets
+GfxDevice: creating device client; threaded=0; jobified=0
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.1]
+    Renderer: NVIDIA GeForce RTX 3050 Laptop GPU (ID=0x25a2)
+    Vendor:   NVIDIA
+    VRAM:     3964 MB
+    Driver:   32.0.15.7602
+Initialize mono
+Mono path[0] = 'C:/Program Files/Unity/Hub/Editor/2022.3.61f1/Editor/Data/Managed'
+Mono path[1] = 'C:/Program Files/Unity/Hub/Editor/2022.3.61f1/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-win32'
+Mono config path = 'C:/Program Files/Unity/Hub/Editor/2022.3.61f1/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56052
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: C:/Program Files/Unity/Hub/Editor/2022.3.61f1/Editor/Data/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Registered in 0.004423 seconds.
+- Loaded All Assemblies, in  0.267 seconds
+Native extension for WindowsStandalone target not found
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.205 seconds
+Domain Reload Profiling: 470ms
+	BeginReloadAssembly (82ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (1ms)
+	RebuildCommonClasses (28ms)
+	RebuildNativeTypeToScriptingClass (7ms)
+	initialDomainReloadingComplete (44ms)
+	LoadAllAssembliesAndSetupDomain (105ms)
+		LoadAssemblies (81ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (104ms)
+			TypeCache.Refresh (103ms)
+				TypeCache.ScanAssembly (93ms)
+			ScanForSourceGeneratedMonoScriptInfo (0ms)
+			ResolveRequiredComponents (0ms)
+	FinalizeReload (205ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (167ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (7ms)
+			SetLoadedEditorAssemblies (6ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (1ms)
+			ProcessInitializeOnLoadAttributes (114ms)
+			ProcessInitializeOnLoadMethodAttributes (39ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+========================================================================
+Worker process is ready to serve import requests
+Caller must complete domain reload
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  0.468 seconds
+Native extension for WindowsStandalone target not found
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.400 seconds
+Domain Reload Profiling: 869ms
+	BeginReloadAssembly (119ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (4ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (15ms)
+	RebuildCommonClasses (22ms)
+	RebuildNativeTypeToScriptingClass (6ms)
+	initialDomainReloadingComplete (29ms)
+	LoadAllAssembliesAndSetupDomain (291ms)
+		LoadAssemblies (216ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (143ms)
+			TypeCache.Refresh (126ms)
+				TypeCache.ScanAssembly (113ms)
+			ScanForSourceGeneratedMonoScriptInfo (11ms)
+			ResolveRequiredComponents (4ms)
+	FinalizeReload (401ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (292ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (4ms)
+			SetLoadedEditorAssemblies (2ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (43ms)
+			ProcessInitializeOnLoadAttributes (224ms)
+			ProcessInitializeOnLoadMethodAttributes (15ms)
+			AfterProcessingInitializeOnLoad (4ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (5ms)
+Launched and connected shader compiler UnityShaderCompiler.exe after 0.04 seconds
+Refreshing native plugins compatible for Editor in 3.97 ms, found 3 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 3180 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 20 unused Assets / (55.1 KB). Loaded Objects now: 3646.
+Memory consumption went from 128.1 MB to 128.0 MB.
+Total: 3.329000 ms (FindLiveObjects: 0.483600 ms CreateObjectMapping: 0.159400 ms MarkObjects: 2.568500 ms  DeleteObjects: 0.116500 ms)
+
+AssetImportParameters requested are different than current active one (requested -> active):
+  custom:container-demuxer-ogg: 62fdf1f143b41e24485cea50d1cbac27 -> 
+  custom:video-codec-MediaFoundation-h265: 746d11721c4dcdbdad8f713fa42b33f4 -> 
+  custom:video-decoder-ogg-theora: a1e56fd34408186e4bbccfd4996cb3dc -> 
+  custom:framework-win-MediaFoundation: 216162199b28c13a410421893ffa2e32 -> 
+  custom:CustomObjectIndexerAttribute: 9a22284fe3817be447336de3de66b15e -> 
+  custom:container-demuxer-webm: 4f35f7cbe854078d1ac9338744f61a02 -> 
+  custom:container-muxer-webm: aa71ff27fc2769a1b78a27578f13a17b -> 
+  custom:video-decoder-webm-vp8: 9c59270c3fd7afecdb556c50c9e8de78 -> 
+  custom:SearchIndexIgnoredProperties: e643bd26f0fe6173181afceb89e7c659 -> 
+  custom:AudioImporter_EditorPlatform: d09bf68614088b80899f8185d706f6e7 -> 
+  custom:video-encoder-webm-vp8: eb34c28f22e8b96e1ab97ce403110664 -> 
+  custom:audio-decoder-ogg-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:audio-encoder-webm-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+========================================================================
+Received Import Request.
+  Time since last request: 280133.951952 seconds.
+  path: Assets/Models
+  artifactKey: Guid(35328f48f53d21b4188fab387bdb92ff) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Models using Guid(35328f48f53d21b4188fab387bdb92ff) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: 'decb8e8b02ac371111c5f8a410d89d92') in 0.003146 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 0
+========================================================================
+Received Import Request.
+  Time since last request: 17.915996 seconds.
+  path: Assets/Models/male_human_a_pose.glb
+  artifactKey: Guid(e44ca6e764e8f934cabddd154bd62506) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Models/male_human_a_pose.glb using Guid(e44ca6e764e8f934cabddd154bd62506) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: 'd55c99aeb7860165527f50cbcf389fd1') in 0.305113 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 12
+========================================================================
+Received Import Request.
+  Time since last request: 1242.246635 seconds.
+  path: Packages/com.siccity.gltfutility/Scripts/Editor/GLTFUtility.Editor.asmdef
+  artifactKey: Guid(56f0af5eabd0f8244a313552ef7d963e) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Packages/com.siccity.gltfutility/Scripts/Editor/GLTFUtility.Editor.asmdef using Guid(56f0af5eabd0f8244a313552ef7d963e) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: 'ef82dd07801a756cc029c9719420d256') in 0.008000 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 0
+========================================================================
+Received Import Request.
+  Time since last request: 12.042286 seconds.
+  path: Packages/com.siccity.gltfutility/GLTFUtility.asmdef
+  artifactKey: Guid(774f0e7b520e24644b448f5ac7fa5d94) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Packages/com.siccity.gltfutility/GLTFUtility.asmdef using Guid(774f0e7b520e24644b448f5ac7fa5d94) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: '4681b0e5dbc3f104958bb4b55990aed6') in 0.002031 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 0
+========================================================================
+Received Import Request.
+  Time since last request: 0.002590 seconds.
+  path: Packages/com.siccity.gltfutility/package.json
+  artifactKey: Guid(3e1e5597138079f40bc737a8a2556654) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Packages/com.siccity.gltfutility/package.json using Guid(3e1e5597138079f40bc737a8a2556654) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: 'e8b6e3a7b2f55a031286bf72a765463b') in 0.011783 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 1
+========================================================================
+Received Prepare
+Caller must complete domain reload
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  4.007 seconds
+Native extension for WindowsStandalone target not found
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in 31.188 seconds
+Domain Reload Profiling: 35195ms
+	BeginReloadAssembly (316ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (9ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (137ms)
+	RebuildCommonClasses (26ms)
+	RebuildNativeTypeToScriptingClass (9ms)
+	initialDomainReloadingComplete (27ms)
+	LoadAllAssembliesAndSetupDomain (3627ms)
+		LoadAssemblies (3727ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (16ms)
+			TypeCache.Refresh (9ms)
+				TypeCache.ScanAssembly (0ms)
+			ScanForSourceGeneratedMonoScriptInfo (0ms)
+			ResolveRequiredComponents (6ms)
+	FinalizeReload (31190ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (333ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (5ms)
+			SetLoadedEditorAssemblies (4ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (49ms)
+			ProcessInitializeOnLoadAttributes (252ms)
+			ProcessInitializeOnLoadMethodAttributes (19ms)
+			AfterProcessingInitializeOnLoad (4ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (5ms)
+Refreshing native plugins compatible for Editor in 4.78 ms, found 3 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 3168 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 15 unused Assets / (29.0 KB). Loaded Objects now: 3693.
+Memory consumption went from 130.9 MB to 130.9 MB.
+Total: 5.008400 ms (FindLiveObjects: 0.592400 ms CreateObjectMapping: 0.129700 ms MarkObjects: 4.214300 ms  DeleteObjects: 0.070900 ms)
+
+Prepare: number of updated asset objects reloaded= 0
+AssetImportParameters requested are different than current active one (requested -> active):
+  custom:container-demuxer-ogg: 62fdf1f143b41e24485cea50d1cbac27 -> 
+  custom:video-codec-MediaFoundation-h265: 746d11721c4dcdbdad8f713fa42b33f4 -> 
+  custom:video-decoder-ogg-theora: a1e56fd34408186e4bbccfd4996cb3dc -> 
+  custom:framework-win-MediaFoundation: 216162199b28c13a410421893ffa2e32 -> 
+  custom:CustomObjectIndexerAttribute: 9a22284fe3817be447336de3de66b15e -> 
+  custom:container-demuxer-webm: 4f35f7cbe854078d1ac9338744f61a02 -> 
+  custom:container-muxer-webm: aa71ff27fc2769a1b78a27578f13a17b -> 
+  custom:video-decoder-webm-vp8: 9c59270c3fd7afecdb556c50c9e8de78 -> 
+  custom:SearchIndexIgnoredProperties: e643bd26f0fe6173181afceb89e7c659 -> 
+  custom:AudioImporter_EditorPlatform: d09bf68614088b80899f8185d706f6e7 -> 
+  custom:video-encoder-webm-vp8: eb34c28f22e8b96e1ab97ce403110664 -> 
+  custom:audio-decoder-ogg-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:audio-encoder-webm-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+========================================================================
+Received Import Request.
+  Time since last request: 185.310876 seconds.
+  path: Assets/GLTFUtility
+  artifactKey: Guid(7e599f1f5664b0b48b4bbeaad20eb142) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/GLTFUtility using Guid(7e599f1f5664b0b48b4bbeaad20eb142) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: '64a36b6233608cf1720db2335f4dbbcc') in 0.005573 seconds
+Number of updated asset objects reloaded before import = 0
+Number of asset objects unloaded after import = 0
+========================================================================
+Received Import Request.
+  Time since last request: 376.115566 seconds.
+  path: Assets/Models/male_human_a_pose.glb
+  artifactKey: Guid(e44ca6e764e8f934cabddd154bd62506) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Models/male_human_a_pose.glb using Guid(e44ca6e764e8f934cabddd154bd62506) Importer(815301076,1909f56bfc062723c751e8b465ee728b) [PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+[PhysX] Initialized MultithreadedTaskDispatcher with 16 workers.
+ -> (artifact id: '3f3bae09dc64b7dd998ede0f9242f3f9') in 0.121651 seconds
+Number of updated asset objects reloaded before import = 4
+Number of asset objects unloaded after import = 12
+========================================================================
+Received Prepare
+Assembly with name 'Siccity.GLTFUtility' already exists (Packages/com.siccity.gltfutility/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility' already exists (Assets/GLTFUtility/GLTFUtility-master/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Assets/GLTFUtility/GLTFUtility-master/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Packages/com.siccity.gltfutility/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFScene.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions/KHR_texture_transform.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAccessor.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Plugins/draco/GLTFUtilityDracoLoader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMaterial.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAsset.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/EnumConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/ColorConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Matrix4x4Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Enums.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/AnimationSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBufferView.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector3Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/QuaternionConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFNode.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/TranslationConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMesh.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFTexture.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector2Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFObject.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFPrimitive.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ShaderSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Exporter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFSkin.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFProperty.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAnimation.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBuffer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFImage.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ImportSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFCamera.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFExtras.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Importer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/BufferedBinaryReader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Caller must complete domain reload
+Assembly with name 'Siccity.GLTFUtility' already exists (Packages/com.siccity.gltfutility/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility' already exists (Assets/GLTFUtility/GLTFUtility-master/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Assets/GLTFUtility/GLTFUtility-master/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Packages/com.siccity.gltfutility/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFScene.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions/KHR_texture_transform.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAccessor.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Plugins/draco/GLTFUtilityDracoLoader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMaterial.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAsset.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/EnumConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/ColorConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Matrix4x4Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Enums.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/AnimationSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBufferView.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector3Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/QuaternionConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFNode.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/TranslationConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMesh.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFTexture.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector2Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFObject.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFPrimitive.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ShaderSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Exporter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFSkin.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFProperty.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAnimation.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBuffer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFImage.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ImportSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFCamera.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFExtras.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Importer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/BufferedBinaryReader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Begin MonoManager ReloadAssembly
+Symbol file LoadedFromMemory is not a mono symbol file
+- Loaded All Assemblies, in  0.334 seconds
+Native extension for WindowsStandalone target not found
+Assembly with name 'Siccity.GLTFUtility' already exists (Packages/com.siccity.gltfutility/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility' already exists (Assets/GLTFUtility/GLTFUtility-master/GLTFUtility.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Assets/GLTFUtility/GLTFUtility-master/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Assembly with name 'Siccity.GLTFUtility.Editor' already exists (Packages/com.siccity.gltfutility/Scripts/Editor/GLTFUtility.Editor.asmdef)
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFScene.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions/KHR_texture_transform.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAccessor.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Plugins/draco/GLTFUtilityDracoLoader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMaterial.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAsset.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/EnumConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/ColorConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Matrix4x4Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Enums.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/AnimationSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBufferView.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector3Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Extensions.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/QuaternionConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFNode.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/TranslationConverter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFMesh.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFTexture.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Converters/Vector2Converter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFObject.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFPrimitive.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ShaderSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Exporter.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFSkin.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFProperty.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFAnimation.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFBuffer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFImage.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Settings/ImportSettings.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFCamera.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Spec/GLTFExtras.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/Importer.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Script 'Packages/com.siccity.gltfutility/Scripts/BufferedBinaryReader.cs' will not be compiled because it exists outside the Assets folder and does not to belong to any assembly definition file.
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.568 seconds
+Domain Reload Profiling: 901ms
+	BeginReloadAssembly (115ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (3ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (26ms)
+	RebuildCommonClasses (26ms)
+	RebuildNativeTypeToScriptingClass (7ms)
+	initialDomainReloadingComplete (20ms)
+	LoadAllAssembliesAndSetupDomain (164ms)
+		LoadAssemblies (203ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (22ms)
+			TypeCache.Refresh (10ms)
+				TypeCache.ScanAssembly (1ms)
+			ScanForSourceGeneratedMonoScriptInfo (7ms)
+			ResolveRequiredComponents (3ms)
+	FinalizeReload (569ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (270ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (4ms)
+			SetLoadedEditorAssemblies (3ms)
+			RefreshPlugins (0ms)
+			BeforeProcessingInitializeOnLoad (60ms)
+			ProcessInitializeOnLoadAttributes (182ms)
+			ProcessInitializeOnLoadMethodAttributes (14ms)
+			AfterProcessingInitializeOnLoad (5ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (5ms)
+Refreshing native plugins compatible for Editor in 3.90 ms, found 3 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 3172 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 53 unused Assets / (1.3 MB). Loaded Objects now: 3696.
+Memory consumption went from 132.0 MB to 130.7 MB.
+Total: 2.840100 ms (FindLiveObjects: 0.156800 ms CreateObjectMapping: 0.076200 ms MarkObjects: 2.204300 ms  DeleteObjects: 0.402000 ms)
+
+Prepare: number of updated asset objects reloaded= 0
+AssetImportParameters requested are different than current active one (requested -> active):
+  custom:scripting/monoscript/fileName/GLTFAssetUtility.cs: eced3aec3da89687ebc4084072f59cce -> e2bf26296af4eaba62ed5992dd9227ea
+  custom:scripting/monoscript/fileName/GLTFImage.cs: 2dfed5d45dc8691bfb0a52ab75dc0417 -> 866948ab3619e0665207fdcb5b0a5fee
+  custom:scripting/monoscript/fileName/ShaderSettings.cs: 782de2c4385c1a09d8d4b1aa81abc4de -> 991f09b12b264ba284938a59f57671c5
+  custom:container-demuxer-ogg: 62fdf1f143b41e24485cea50d1cbac27 -> 
+  custom:scripting/monoscript/fileName/GLTFMaterial.cs: f0bb4987e1a99f15c3f90437b02e84cb -> 2b4809d7d4c484a4c58280a1fce365ce
+  custom:video-codec-MediaFoundation-h265: 746d11721c4dcdbdad8f713fa42b33f4 -> 
+  custom:video-decoder-ogg-theora: a1e56fd34408186e4bbccfd4996cb3dc -> 
+  custom:scripting/monoscript/fileName/ColorConverter.cs: f5fc631255dfa85b6b9576443eeaf7ef -> bb94c60b7cd1903845441667e9eab676
+  custom:scripting/monoscript/fileName/GLTFScene.cs: 6221bb934e19d800701db9941bd512f3 -> 5365dde4ef649cd8e7ee7a520f8e65fd
+  custom:framework-win-MediaFoundation: 216162199b28c13a410421893ffa2e32 -> 
+  custom:scripting/monoscript/fileName/GLTFAsset.cs: a66cb2feb128bebb8935e3c70c5ea8d8 -> 977501ce655d972d54155a7916b5ebc4
+  custom:scripting/monoscript/fileName/Importer.cs: d7780ec69818142168f832c652fd307b -> 74c91b8bd036a3fd750c53e4cb9aaff8
+  custom:scripting/monoscript/fileName/Vector3Converter.cs: 98579d1c60bb18a247d742d63000de6c -> 65adea7d66380800f5fc567560733e29
+  custom:CustomObjectIndexerAttribute: 9a22284fe3817be447336de3de66b15e -> 
+  custom:scripting/monoscript/fileName/KHR_texture_transform.cs: 8b56c785e72228bb8d3a366070264da2 -> 1363241f5d4ede9a49d2981c8d82cdc7
+  custom:container-demuxer-webm: 4f35f7cbe854078d1ac9338744f61a02 -> 
+  custom:scripting/precompiled-assembly-types:Siccity.GLTFUtility: 51a536eba43eaacb1d51cb7c283ebf2e -> a8bb2e882ebfdff7f7c5281e6d1ba593
+  custom:scripting/monoscript/fileName/BufferedBinaryReader.cs: 72d9f9ffbdea928ac760c6eed94c3228 -> 3b7281e45023adc427966f3765d87ca8
+  custom:scripting/monoscript/fileName/EnumConverter.cs: 6211cbee904ff86965fd819e12c012b0 -> fe8505b6abd119903d7f40adcc0c095b
+  custom:scripting/monoscript/fileName/QuaternionConverter.cs: efc7d1921ede62922b899e916f5871b9 -> 5801d5836670b422c4f65869b03375e5
+  custom:container-muxer-webm: aa71ff27fc2769a1b78a27578f13a17b -> 
+  custom:scripting/monoscript/fileName/ShaderSettingsDrawer.cs: d4eed6d13fb03a1ce83daa9b676b544b -> 5bb3bc540bfa5e16896aa859bc557787
+  custom:scripting/monoscript/fileName/Extensions.cs: 9b01ddd917b9c4625d3b94f0fe473d7a -> 51d56ad0deb8c440812497e77c770266
+  custom:video-decoder-webm-vp8: 9c59270c3fd7afecdb556c50c9e8de78 -> 
+  custom:scripting/monoscript/fileName/GLTFSkin.cs: 24f0375155a56334cfb0f54aa1c38f96 -> 0d29822fa80b35e1e17d782d4211fad8
+  custom:scripting/monoscript/fileName/Vector2Converter.cs: 5a8d61f9defaf7060ed49970c442533d -> 7db210ad468f788e34a94a1059049854
+  custom:SearchIndexIgnoredProperties: e643bd26f0fe6173181afceb89e7c659 -> 
+  custom:AudioImporter_EditorPlatform: d09bf68614088b80899f8185d706f6e7 -> 
+  custom:scripting/monoscript/fileName/TranslationConverter.cs: 4ec362d1be5309352cadd3c813ed29fa -> 861cb8f7eb80d4d8c46e36c2fae63387
+  custom:scripting/monoscript/fileName/GLTFBufferView.cs: 541587e99f19ec176cfa3d14d24207d5 -> 00aad78be451d6e4c4e847d030990867
+  custom:scripting/monoscript/fileName/GLTFAnimation.cs: c6c2b31afffe5e7a12e100ade37c9a62 -> d69b9af4edaa54617eb14b3e9f2b2266
+  custom:scripting/monoscript/fileName/GLTFBuffer.cs: f4da92a621ea0b4ab27f9aa0a27b9716 -> 8e80e5b5a280e9eed79cc2ba6eeb37d5
+  custom:scripting/monoscript/fileName/ImportSettings.cs: e2dc4873d347c8e73c71ede9efca6cd0 -> 5336bf08964b68120fa91ba25d6a6757
+  custom:scripting/monoscript/fileName/GLTFCamera.cs: 1b07c9c7794922fed6b5838ca55d7347 -> f2130cabb1b84b770a98ea67ed492ea6
+  custom:scripting/monoscript/fileName/GLTFObject.cs: b2db700f9c84c7e4ed5733870cf99dc1 -> bbbf87dad74ad051170bdce1f0f7f2e1
+  custom:scripting/monoscript/fileName/GLTFPrimitive.cs: e6a323c80e29050d8440c469002f5529 -> c3079bcc1e4d0fe142c14fc11c32ac90
+  custom:scripting/monoscript/fileName/GLTFNode.cs: d063a95293704cfa290462650def3252 -> 41064e187df5ce42d58dd52e6bb76276
+  custom:video-encoder-webm-vp8: eb34c28f22e8b96e1ab97ce403110664 -> 
+  custom:audio-decoder-ogg-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:scripting/monoscript/fileName/Exporter.cs: 7db37bd6b2c3dc5613f9f2e4db577571 -> a68e6b8b116f8c36b6b52704b33204a6
+  custom:scripting/monoscript/fileName/GLTFAccessor.cs: c845bdea55d14f3e0981809097a810b0 -> 744e78ec26d309766a669cb3c5c1605c
+  custom:scripting/monoscript/fileName/GLTFUtilityDracoLoader.cs: 100d7a0545831d9200392cec6540c24c -> b078c6e96315377042fe851a9a2c969d
+  custom:scripting/monoscript/fileName/GLTFProperty.cs: f7791feafe9fe5e772416bc6d6f3a2be -> 2821971328a0b1642ce0c2fe3e57c353
+  custom:scripting/monoscript/fileName/GLBImporter.cs: 52608f2452e705eeff9c678b19c197ba -> f961e7b5a923d832d70a7414324939f0
+  custom:scripting/monoscript/fileName/GLTFExtras.cs: 493da08fe986b084d80b9b0eec237086 -> 477984a35cdedf8d3b49ff0565fc6232
+  custom:scripting/monoscript/fileName/GLTFTexture.cs: c43f57a6aee3052096a9a7882b2a2cd9 -> f19eada87de8f7182feb98651414916e
+  custom:scripting/monoscript/fileName/Enums.cs: 2a948b88fd8a621b277c99bfc8bcce22 -> df22f7e26ae9daad10d2321cb19bb460
+  custom:scripting/monoscript/fileName/GLTFMesh.cs: c40007abb94337117a35072b46edcf51 -> 6eea857399b8fb3b1963b628c921729b
+  custom:scripting/precompiled-assembly-types:Siccity.GLTFUtility.Editor: 63f92630a861acecd880832f2f6ec621 -> b1acd106710d06e618b82f25bb1ac1f1
+  custom:scripting/monoscript/fileName/Matrix4x4Converter.cs: 24c3e458703547cce0c3047f0f138107 -> 7736ec1996c438fdb617bb8b115aa6b7
+  custom:audio-encoder-webm-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:scripting/monoscript/fileName/GLTFImporter.cs: abab9e444c0898daf924e4ea025e1302 -> e9e24d179eb33dec785c750ea6d3b717
+  custom:scripting/monoscript/fileName/AnimationSettings.cs: 6540866cd979e86c9386c7ad95ed4c4a -> 31b7a9198efae9f61538add5a1b89dfd
