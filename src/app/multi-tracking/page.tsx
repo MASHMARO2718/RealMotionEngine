@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import Box from '@mui/material/Box';
 import DummyBox from '../../components/layout/DummyBox';
+import FetchDemo from '../../components/FetchDemo';
 
 // クライアントサイドのみでレンダリングする必要がある
 const MultiTracker = dynamic(
@@ -22,6 +23,9 @@ export default function MultiTrackingPage() {
       </Box>
       <Box sx={{ width: 220, minWidth: 220, maxWidth: 220, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <DummyBox label={"Analyzed body data"} width={220} height={540} />
+        <Box sx={{ mt: 2, width: '100%' }}>
+          <FetchDemo />
+        </Box>
       </Box>
     </Box>
   );

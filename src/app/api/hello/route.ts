@@ -2,6 +2,6 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  return NextResponse.json({ message: "Hello from Motrix backend!" });
+  const message = "Hello from Motrix backend!";
+  return NextResponse.json({ message });
 }
-

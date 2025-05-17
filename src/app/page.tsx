@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { HandGesture } from '../lib/hand/mediapipe-hand-tracking';
 import MediaPipeErrorBoundary from '../components/shared/MediaPipeErrorBoundary';
+import FetchDemo from "../components/FetchDemo";
 
 // クライアントサイドのみでレンダリングする必要がある
 const HandTracker = dynamic(
@@ -177,6 +178,7 @@ export default function Home() {
           ))}
         </div>
       </div>
+      <FetchDemo />
     </main>
   );
 }
