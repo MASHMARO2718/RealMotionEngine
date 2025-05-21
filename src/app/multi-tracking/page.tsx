@@ -11,6 +11,11 @@ const MultiTracker = dynamic(
   { ssr: false }
 );
 
+const ModelViewer = dynamic(
+  () => import('../../components/three/ModelViewer'),
+  { ssr: false }
+);
+
 export default function MultiTrackingPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', p: 4, pl: 12, minHeight: '100vh', background: '#fff', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
@@ -18,7 +23,7 @@ export default function MultiTrackingPage() {
         <MultiTracker width={560} height={420} />
       </Box>
       <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <DummyBox label={"3D Model\nthrough Unity"} width={560} height={420} />
+        <ModelViewer width={560} height={420} />
         <DummyBox label={"Recorder UI"} width={560} height={120} sx={{ mt: 2 }} />
       </Box>
       <Box sx={{ width: 220, minWidth: 220, maxWidth: 220, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
