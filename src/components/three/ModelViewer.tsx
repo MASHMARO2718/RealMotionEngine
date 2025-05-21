@@ -1,9 +1,22 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, Environment } from '@react-three/drei';
+import { useEffect } from 'react';
 import { Suspense } from 'react';
 import Box from '@mui/material/Box';
+import { Canvas } from '@react-three/fiber';
+import { Environment, Grid, OrbitControls, useGLTF } from '@react-three/drei';
+
+function Model() {
+  const { scene } = useGLTF('/models/human.glb');
+  
+  useEffect(() => {
+    // モデルの初期位置とスケールを調整
+    scene.position.set(0, -1, 0);
+    scene.scale.set(1, 1, 1);
+  }, [scene]);
+
+  return <primitive object={scene} />;
+}
 
 function Scene() {
   return (
@@ -19,15 +32,13 @@ function Scene() {
         sectionSize={3.3}
         sectionThickness={1}
         sectionColor="#9d4b4b"
-        fadeDistance={30}
         fadeStrength={1}
         followCamera={false}
         infiniteGrid={true}
       />
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="hotpink" />
-      </mesh>
+      <Suspense fallback={null}>
+        <Model />
+      </Suspense>
       <OrbitControls makeDefault />
       <Environment preset="city" />
     </>
@@ -38,13 +49,10 @@ export default function ModelViewer({ width = 560, height = 420 }) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       <Canvas
-        camera={{ position: [3, 3, 3], fov: 50 }}
+        camera={{ position: [0, 0, 5], fov: 45 }}
         style={{ background: '#f0f0f0' }}
-        gl={{ antialias: true }}
       >
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
+        <Scene />
       </Canvas>
     </Box>
   );
