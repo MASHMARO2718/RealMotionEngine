@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { SportsHandball, DirectionsRun, Face } from '@mui/icons-material';
+import { blue, cyan } from '@mui/material/colors';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Typography from '@mui/material/Typography';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { blue, cyan } from '@mui/material/colors';
-import { SportsHandball, DirectionsRun, Face } from '@mui/icons-material';
-import { initializeMediaPipePoseTracking, detectPoseLandmarks, disposeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
-import { initializeMediaPipeHandTracking, detectHandLandmarks, disposeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
-import { initializeMediaPipeFaceTracking, detectFaceLandmarks, disposeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
-import { drawPoseLandmarks, drawHandLandmarks, CYBERPUNK_COLORS } from '../../lib/shared/mediapipe-utils';
+import Typography from '@mui/material/Typography';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { drawHandLandmarks, drawPoseLandmarks, CYBERPUNK_COLORS } from '../../lib/shared/mediapipe-utils';
+import { detectFaceLandmarks, disposeMediaPipeFaceTracking, initializeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
+import { detectHandLandmarks, disposeMediaPipeHandTracking, initializeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
+import { detectPoseLandmarks, disposeMediaPipePoseTracking, initializeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 
 type TrackerState = {
   enabled: boolean;

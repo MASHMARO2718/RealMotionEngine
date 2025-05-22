@@ -205,8 +205,8 @@ export function drawPoseLandmarks(
   // 最初の検出された人物のみ描画
   const landmarks = result.landmarks[0];
   
-  // スキップする手の平の3点（両腕）
-  const skipIndices = [17, 19, 21, 18, 20, 22];
+  // スキップする手の平の3点（両腕）と頭部のポイント
+  const skipIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 17, 19, 21, 18, 20, 22];
 
   // 接続線を描画
   ctx.lineWidth = 4; // 太めの線
@@ -224,12 +224,8 @@ export function drawPoseLandmarks(
     // パーツに応じた色を設定
     let lineColor = CYBERPUNK_COLORS.connection;
     
-    // 顔の部分
-    if (start <= 10 && end <= 10) {
-      lineColor = CYBERPUNK_COLORS.face;
-    } 
     // 左側の腕や脚
-    else if ([11, 13, 15, 23, 25, 27, 29, 31].includes(start) || 
+    if ([11, 13, 15, 23, 25, 27, 29, 31].includes(start) || 
              [11, 13, 15, 23, 25, 27, 29, 31].includes(end)) {
       lineColor = CYBERPUNK_COLORS.leftSide;
     } 
@@ -277,16 +273,14 @@ export function drawPoseLandmarks(
     let pointSize = 5;
     let pointColor = CYBERPUNK_COLORS.connection;
     
-    // 重要なランドマーク（頭、肩、腰、手首、足首）にはより大きなサイズ
-    const keyPoints = [0, 11, 12, 23, 24, 15, 16, 27, 28];
+    // 重要なランドマーク（肩、腰、手首、足首）にはより大きなサイズ
+    const keyPoints = [11, 12, 23, 24, 15, 16, 27, 28];
     if (keyPoints.includes(index)) {
       pointSize = 8;
     }
     
-    // 部位ごとに色を変える
-    if (index <= 10) { // 顔
-      pointColor = CYBERPUNK_COLORS.face;
-    } else if ([11, 13, 15, 23, 25, 27, 29, 31].includes(index)) { // 左側
+    // 部位ごとに色を変える（頭部は除外済み）
+    if ([11, 13, 15, 23, 25, 27, 29, 31].includes(index)) { // 左側
       pointColor = CYBERPUNK_COLORS.leftSide;
     } else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(index)) { // 右側
       pointColor = CYBERPUNK_COLORS.rightSide;
