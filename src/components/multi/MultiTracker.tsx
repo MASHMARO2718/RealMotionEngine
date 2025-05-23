@@ -10,6 +10,7 @@ import { drawHandLandmarks, drawPoseLandmarks, CYBERPUNK_COLORS } from '../../li
 import { detectFaceLandmarks, disposeMediaPipeFaceTracking, initializeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
 import { detectHandLandmarks, disposeMediaPipeHandTracking, initializeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
 import { detectPoseLandmarks, disposeMediaPipePoseTracking, initializeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
+import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 
 type TrackerState = {
   enabled: boolean;
@@ -54,7 +55,17 @@ const TRACKER_INFOS: Record<keyof TrackerStates, TrackerInfo> = {
   },
 };
 
-export default function MultiTracker({ width = 560, height = 420, glowSize = 15 }) {
+export default function MultiTracker({ 
+  width = 560, 
+  height = 420, 
+  glowSize = 15,
+  onPoseDetected 
+}: { 
+  width?: number; 
+  height?: number; 
+  glowSize?: number;
+  onPoseDetected?: (result: PoseLandmarkerResult) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -152,6 +163,9 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
           if (trackerStates.pose.enabled) {
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize);
           }
+          if (onPoseDetected) {
+            onPoseDetected(result);
+          }
         }
       });
     }
@@ -191,7 +205,7 @@ export default function MultiTracker({ width = 560, height = 420, glowSize = 15 
       });
     }
     requestRef.current = requestAnimationFrame(runTracking);
-  }, [isInitialized, isRunning, trackerStates, glowSize]);
+  }, [isInitialized, isRunning, trackerStates, glowSize, onPoseDetected]);
 
   useEffect(() => {
     if (isInitialized && isRunning && !requestRef.current) {
