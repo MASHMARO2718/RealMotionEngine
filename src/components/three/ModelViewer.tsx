@@ -7,11 +7,14 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-function HumanBoneModel() {
+import { calculateJointRotations } from '../../lib/shared/pose-utils';
+
+function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/models/human_bone.glb') as any;
   const [modelLoaded, setModelLoaded] = useState(false);
   const boneVisualizationRef = useRef<THREE.Group | null>(null);
+  const bonesRef = useRef<THREE.Bone[]>([]);  // ボーンの参照を保存
 
   // モデルの構造を詳細に調査して表示する関数
   const analyzeAndFixModel = (scene: THREE.Object3D) => {
@@ -203,9 +206,16 @@ function HumanBoneModel() {
       
       // ボーンの可視化を作成
       if (analysis.bones.length > 0) {
+        // 既存の可視化をクリア
+        if (boneVisualizationRef.current) {
+          group.current.remove(boneVisualizationRef.current);
+          boneVisualizationRef.current = null;
+        }
+        
         const boneVisualization = createBoneVisualization(analysis.bones);
         group.current.add(boneVisualization);
         boneVisualizationRef.current = boneVisualization;
+        bonesRef.current = analysis.bones;  // ボーンを保存してアニメーション用に使用
         console.log(`✅ ${analysis.bones.length}個のボーンをオレンジ色で可視化しました`);
       } else {
         console.log('⚠️ ボーンが見つかりませんでした');
@@ -234,20 +244,111 @@ function HumanBoneModel() {
         // 足が地面につくように調整（モデルの最低点をY=0に）
         const bbox = new THREE.Box3().setFromObject(scene);
         const minY = bbox.min.y;  // モデルの最低点（足）
-        const yOffset = -minY * scale;  // 最低点がY=0になるように調整
+        const yOffset = Math.max(0, -minY * scale);  // 最低点がY=0以上になるように調整
         group.current.position.setY(yOffset);
-        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)}`);
+        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)} (Y=0以下防止)`);
       }
       
       setModelLoaded(true);
       console.log('✅ 3Dモデル初期化完了');
     }
+    
+    // クリーンアップ関数
+    return () => {
+      if (boneVisualizationRef.current && group.current) {
+        group.current.remove(boneVisualizationRef.current);
+        boneVisualizationRef.current = null;
+      }
+      bonesRef.current = [];
+    };
   }, [scene]);
+
+  // リアルタイムボーンアニメーション
+  useFrame((state, delta) => {
+    if (!modelLoaded || !poseData || !poseData.landmarks || poseData.landmarks.length === 0) {
+      return;
+    }
+
+    try {
+      // MediaPipeのポーズデータから関節角度を計算
+      const rotations = calculateJointRotations(poseData);
+      
+      if (rotations && bonesRef.current.length > 0) {
+        console.log('🎯 ボーンアニメーション開始:', Object.keys(rotations));
+        
+        // 計算された回転をボーンに適用
+        bonesRef.current.forEach((bone, index) => {
+          // ボーン名から適切な回転データを見つける
+          const boneName = bone.name.toLowerCase();
+          
+          // ボーン名のマッピング（例: "LeftShoulder" → "leftShoulder"）
+          for (const [jointName, rotation] of Object.entries(rotations)) {
+            if (boneName.includes(jointName.toLowerCase()) || 
+                jointName.toLowerCase().includes(boneName)) {
+              
+              if (rotation instanceof THREE.Quaternion) {
+                bone.quaternion.copy(rotation);
+                console.log(`🔄 回転適用: ボーン"${bone.name}" ← 関節"${jointName}"`);
+              }
+              break;
+            }
+          }
+        });
+        
+        // ボーン可視化も更新
+        if (boneVisualizationRef.current) {
+          // 可視化オブジェクトの位置を更新
+          bonesRef.current.forEach((bone, index) => {
+            const worldPosition = new THREE.Vector3();
+            bone.getWorldPosition(worldPosition);
+            
+            // 球体の位置を更新
+            const sphereName = `bone_sphere_${bone.name || index}`;
+            const sphere = boneVisualizationRef.current?.getObjectByName(sphereName);
+            if (sphere) {
+              sphere.position.copy(worldPosition);
+            }
+            
+            // 接続線（円柱）の位置と回転も更新
+            if (bone.parent && bone.parent instanceof THREE.Bone) {
+              const parentWorldPosition = new THREE.Vector3();
+              bone.parent.getWorldPosition(parentWorldPosition);
+              
+              const connectionName = `bone_connection_${bone.parent.name}_${bone.name}`;
+              const connection = boneVisualizationRef.current?.getObjectByName(connectionName);
+              if (connection) {
+                // 接続線の長さと方向を再計算
+                const direction = new THREE.Vector3().subVectors(worldPosition, parentWorldPosition);
+                const distance = direction.length();
+                
+                if (distance > 0.01) {
+                  // 中点を計算
+                  const midpoint = new THREE.Vector3().addVectors(worldPosition, parentWorldPosition).multiplyScalar(0.5);
+                  connection.position.copy(midpoint);
+                  
+                  // 接続線の向きを更新
+                  connection.lookAt(worldPosition);
+                  connection.rotateX(Math.PI / 2);
+                  
+                  // 長さも更新（円柱のスケール調整）
+                  if (connection instanceof THREE.Mesh && connection.geometry instanceof THREE.CylinderGeometry) {
+                    connection.scale.setY(distance / 1); // 元の長さで正規化
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ ボーンアニメーションエラー:', error);
+    }
+  });
 
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene() {
+function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   return (
     <>
       {/* 明るいライティング */}
@@ -278,7 +379,7 @@ function Scene() {
           <meshStandardMaterial color="orange" />
         </mesh>
       }>
-        <HumanBoneModel />
+        <HumanBoneModel poseData={poseData} />
       </Suspense>
       
       <OrbitControls 
@@ -298,7 +399,7 @@ interface ModelViewerProps {
   poseData?: PoseLandmarkerResult | null;
 }
 
-export default function ModelViewer({ width = 560, height = 420 }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       <Canvas
@@ -311,7 +412,7 @@ export default function ModelViewer({ width = 560, height = 420 }: ModelViewerPr
         style={{ background: '#f5f5f5' }}
         shadows
       >
-        <Scene />
+        <Scene poseData={poseData} />
       </Canvas>
     </Box>
   );

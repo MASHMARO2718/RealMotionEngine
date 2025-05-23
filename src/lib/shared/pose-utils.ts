@@ -1,11 +1,11 @@
-import * as THREE from 'three';
 import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
+import * as THREE from 'three';
 
 /**
  * MediaPipeのポーズランドマークから主要な関節角度を計算
- * 返り値は各関節の回転を表すQuaternion
+ * MediaPipeの座標（x: 0-1, y: 0-1, z: 相対深度）から3D回転を計算
  */
-export function calculateJointRotations(poseData: PoseLandmarkerResult) {
+export function calculateJointRotations(poseData: PoseLandmarkerResult): { [key: string]: THREE.Quaternion } | null {
   if (!poseData || !poseData.landmarks || poseData.landmarks.length === 0) {
     return null;
   }
@@ -13,114 +13,105 @@ export function calculateJointRotations(poseData: PoseLandmarkerResult) {
   const landmarks = poseData.landmarks[0];
   const rotations: { [key: string]: THREE.Quaternion } = {};
 
-  // ベクトルを作成する関数
-  const createVector = (landmark1: number, landmark2: number) => {
-    const start = landmarks[landmark1];
-    const end = landmarks[landmark2];
+  // MediaPipeの座標を3D空間に変換
+  const getPosition = (landmarkIndex: number): THREE.Vector3 => {
+    const landmark = landmarks[landmarkIndex];
+    if (!landmark) return new THREE.Vector3(0, 0, 0);
+    
     return new THREE.Vector3(
-      end.x - start.x,
-      end.y - start.y,
-      (end.z || 0) - (start.z || 0)
-    ).normalize();
+      (landmark.x - 0.5) * 10,  // -5 to 5
+      (0.5 - landmark.y) * 10,  // -5 to 5 (Y軸反転)
+      (landmark.z || 0) * 4     // -2 to 2
+    );
   };
 
-  // 3点から角度を計算する関数
-  const calculateRotation = (joint: number, parent: number, child: number) => {
-    // 基準となる親->関節ベクトル
-    const parentVector = createVector(parent, joint);
-    // 計算対象の関節->子ベクトル
-    const childVector = createVector(joint, child);
+  // 3点から関節の回転を計算する関数
+  const calculateJointRotation = (parentIndex: number, jointIndex: number, childIndex: number): THREE.Quaternion => {
+    const parentPos = getPosition(parentIndex);
+    const jointPos = getPosition(jointIndex);
+    const childPos = getPosition(childIndex);
     
-    // 回転を計算（親ベクトルを基準として子ベクトルの方向を向かせる）
+    // 関節から親と子への方向ベクトル
+    const toParent = parentPos.clone().sub(jointPos).normalize();
+    const toChild = childPos.clone().sub(jointPos).normalize();
+    
+    // デフォルトの向き（Y軸負方向 = 下向き）
+    const defaultDirection = new THREE.Vector3(0, -1, 0);
+    
+    // 子方向への回転を計算
     const quaternion = new THREE.Quaternion();
-    const upVector = new THREE.Vector3(0, 1, 0); // デフォルトの上方向
+    quaternion.setFromUnitVectors(defaultDirection, toChild);
     
-    // 2つのベクトル間の回転を計算
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.lookAt(
-      new THREE.Vector3(0, 0, 0), // 原点
-      childVector,                // 向きたい方向
-      upVector                    // 上方向
-    );
-    
-    quaternion.setFromRotationMatrix(rotationMatrix);
     return quaternion;
   };
 
   try {
-    // 肩の回転（胴体を基準）
-    rotations['leftShoulder'] = calculateRotation(
-      11, // 左肩
-      12, // 右肩（胴体の向きを決める）
-      13  // 左肘
-    );
+    console.log('🧮 関節角度計算開始...');
     
-    rotations['rightShoulder'] = calculateRotation(
-      12, // 右肩
-      11, // 左肩（胴体の向きを決める）
-      14  // 右肘
-    );
+    // 左肩の回転（左肩→左肘）
+    if (landmarks[11] && landmarks[13]) {
+      rotations['leftShoulder'] = calculateJointRotation(12, 11, 13); // 右肩→左肩→左肘
+      console.log('✅ 左肩の回転を計算');
+    }
     
-    // 肘の回転
-    rotations['leftElbow'] = calculateRotation(
-      13, // 左肘
-      11, // 左肩
-      15  // 左手首
-    );
+    // 右肩の回転（右肩→右肘）
+    if (landmarks[12] && landmarks[14]) {
+      rotations['rightShoulder'] = calculateJointRotation(11, 12, 14); // 左肩→右肩→右肘
+      console.log('✅ 右肩の回転を計算');
+    }
     
-    rotations['rightElbow'] = calculateRotation(
-      14, // 右肘
-      12, // 右肩
-      16  // 右手首
-    );
+    // 左肘の回転（左肩→左肘→左手首）
+    if (landmarks[11] && landmarks[13] && landmarks[15]) {
+      rotations['leftElbow'] = calculateJointRotation(11, 13, 15);
+      console.log('✅ 左肘の回転を計算');
+    }
     
-    // 股関節の回転
-    rotations['leftHip'] = calculateRotation(
-      23, // 左腰
-      24, // 右腰
-      25  // 左膝
-    );
+    // 右肘の回転（右肩→右肘→右手首）
+    if (landmarks[12] && landmarks[14] && landmarks[16]) {
+      rotations['rightElbow'] = calculateJointRotation(12, 14, 16);
+      console.log('✅ 右肘の回転を計算');
+    }
     
-    rotations['rightHip'] = calculateRotation(
-      24, // 右腰
-      23, // 左腰
-      26  // 右膝
-    );
+    // 左股関節の回転（腰→左股関節→左膝）
+    if (landmarks[23] && landmarks[25]) {
+      rotations['leftHip'] = calculateJointRotation(24, 23, 25); // 右腰→左腰→左膝
+      console.log('✅ 左股関節の回転を計算');
+    }
     
-    // 膝の回転
-    rotations['leftKnee'] = calculateRotation(
-      25, // 左膝
-      23, // 左腰
-      27  // 左足首
-    );
+    // 右股関節の回転（腰→右股関節→右膝）
+    if (landmarks[24] && landmarks[26]) {
+      rotations['rightHip'] = calculateJointRotation(23, 24, 26); // 左腰→右腰→右膝
+      console.log('✅ 右股関節の回転を計算');
+    }
     
-    rotations['rightKnee'] = calculateRotation(
-      26, // 右膝
-      24, // 右腰
-      28  // 右足首
-    );
+    // 左膝の回転（左股関節→左膝→左足首）
+    if (landmarks[23] && landmarks[25] && landmarks[27]) {
+      rotations['leftKnee'] = calculateJointRotation(23, 25, 27);
+      console.log('✅ 左膝の回転を計算');
+    }
     
-    // 胴体の回転（左右の肩と腰から計算）
-    const shoulderCenter = new THREE.Vector3(
-      (landmarks[11].x + landmarks[12].x) / 2,
-      (landmarks[11].y + landmarks[12].y) / 2,
-      ((landmarks[11].z || 0) + (landmarks[12].z || 0)) / 2
-    );
+    // 右膝の回転（右股関節→右膝→右足首）
+    if (landmarks[24] && landmarks[26] && landmarks[28]) {
+      rotations['rightKnee'] = calculateJointRotation(24, 26, 28);
+      console.log('✅ 右膝の回転を計算');
+    }
     
-    const hipCenter = new THREE.Vector3(
-      (landmarks[23].x + landmarks[24].x) / 2,
-      (landmarks[23].y + landmarks[24].y) / 2,
-      ((landmarks[23].z || 0) + (landmarks[24].z || 0)) / 2
-    );
+    // 胴体（脊椎）の回転
+    if (landmarks[11] && landmarks[12] && landmarks[23] && landmarks[24]) {
+      const shoulderCenter = getPosition(11).clone().add(getPosition(12)).multiplyScalar(0.5);
+      const hipCenter = getPosition(23).clone().add(getPosition(24)).multiplyScalar(0.5);
+      const spineDirection = shoulderCenter.clone().sub(hipCenter).normalize();
+      
+      const defaultSpine = new THREE.Vector3(0, 1, 0); // 上向き
+      rotations['spine'] = new THREE.Quaternion().setFromUnitVectors(defaultSpine, spineDirection);
+      console.log('✅ 脊椎の回転を計算');
+    }
     
-    const spineVector = new THREE.Vector3().subVectors(shoulderCenter, hipCenter).normalize();
-    const forwardVector = new THREE.Vector3(0, 0, 1);
-    
-    rotations['spine'] = new THREE.Quaternion().setFromUnitVectors(forwardVector, spineVector);
-    
+    console.log(`🎯 計算完了: ${Object.keys(rotations).length}個の関節角度`);
     return rotations;
+    
   } catch (error) {
-    console.error('角度計算エラー:', error);
+    console.error('❌ 角度計算エラー:', error);
     return null;
   }
 }
