@@ -219,10 +219,12 @@ function HumanBoneModel() {
         group.current.scale.set(scale, scale, scale);
         console.log(`🔧 スケール調整: ${scale}`);
         
-        // モデルをグリッドの上に配置（Y軸調整）
-        const yOffset = -analysis.center.y * scale;
+        // 足が地面につくように調整（モデルの最低点をY=0に）
+        const bbox = new THREE.Box3().setFromObject(scene);
+        const minY = bbox.min.y;  // モデルの最低点（足）
+        const yOffset = Math.max(0, -minY * scale);  // 最低点がY=0以上になるように調整
         group.current.position.setY(yOffset);
-        console.log(`🔧 Y位置調整: ${yOffset}`);
+        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)} (Y=0以下防止)`);
       }
       
       setModelLoaded(true);
