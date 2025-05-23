@@ -23,6 +23,7 @@ function HumanBoneModel() {
     let boneCount = 0;
     let materialCount = 0;
     let bones: THREE.Bone[] = [];
+    const processedBones = new Set<THREE.Bone>(); // 重複防止
     
     // すべてのオブジェクトを走査
     scene.traverse((object: THREE.Object3D) => {
@@ -89,17 +90,27 @@ function HumanBoneModel() {
         if (object.skeleton) {
           console.log(`   ボーン数: ${object.skeleton.bones.length}`);
           object.skeleton.bones.forEach((bone, idx) => {
-            console.log(`     ボーン[${idx}]: "${bone.name}"`);
-            bones.push(bone);
+            if (!processedBones.has(bone)) {
+              bones.push(bone);
+              processedBones.add(bone);
+              console.log(`     ボーン[${idx}]: "${bone.name}" (SkinnedMeshから追加)`);
+            } else {
+              console.log(`     ボーン[${idx}]: "${bone.name}" (既に処理済み - スキップ)`);
+            }
           });
         }
       }
       
-      // Boneの場合
+      // Boneの場合（SkinnedMeshに含まれていない独立したボーンのみ）
       if (object instanceof THREE.Bone) {
         boneCount++;
-        bones.push(object);
-        console.log(`🦴 Bone[${boneCount}]: "${object.name}"`);
+        if (!processedBones.has(object)) {
+          bones.push(object);
+          processedBones.add(object);
+          console.log(`🦴 Bone[${boneCount}]: "${object.name}" (独立ボーンとして追加)`);
+        } else {
+          console.log(`🦴 Bone[${boneCount}]: "${object.name}" (既に処理済み - スキップ)`);
+        }
       }
     });
     
@@ -113,6 +124,7 @@ function HumanBoneModel() {
     console.log(`   SkinnedMesh: ${skinnedMeshCount}`);
     console.log(`   Bone: ${boneCount}`);
     console.log(`   Material: ${materialCount}`);
+    console.log(`   実際に処理するボーン数: ${bones.length}`);
     console.log(`   モデルサイズ: (${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)})`);
     console.log(`   モデル中心: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})`);
     
@@ -222,9 +234,9 @@ function HumanBoneModel() {
         // 足が地面につくように調整（モデルの最低点をY=0に）
         const bbox = new THREE.Box3().setFromObject(scene);
         const minY = bbox.min.y;  // モデルの最低点（足）
-        const yOffset = Math.max(0, -minY * scale);  // 最低点がY=0以上になるように調整
+        const yOffset = -minY * scale;  // 最低点がY=0になるように調整
         group.current.position.setY(yOffset);
-        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)} (Y=0以下防止)`);
+        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)}`);
       }
       
       setModelLoaded(true);
