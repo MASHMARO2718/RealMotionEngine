@@ -34,17 +34,43 @@ export default function StickmanModel({ poseData }: StickmanModelProps) {
       if (object instanceof THREE.SkinnedMesh && object.skeleton) {
         console.log(`📦 SkinnedMesh発見: "${object.name}" (${object.skeleton.bones.length}個のボーン)`);
         
+        // 🔍 調査3: Y-botの詳細骨格構造分析
+        console.log('\n🦴 Y-bot骨格詳細分析:');
         object.skeleton.bones.forEach((bone, index) => {
           foundBones.push(bone);
+          
+          // ボーンの初期状態を記録
+          const position = bone.position.clone();
+          const rotation = bone.rotation.clone();
+          const quaternion = bone.quaternion.clone();
+          
+          console.log(`  [${index}] "${bone.name}"`);
+          console.log(`       pos: x=${position.x.toFixed(3)}, y=${position.y.toFixed(3)}, z=${position.z.toFixed(3)}`);
+          console.log(`       rot: x=${rotation.x.toFixed(3)}, y=${rotation.y.toFixed(3)}, z=${rotation.z.toFixed(3)}`);
+          console.log(`       quat: x=${quaternion.x.toFixed(3)}, y=${quaternion.y.toFixed(3)}, z=${quaternion.z.toFixed(3)}, w=${quaternion.w.toFixed(3)}`);
           
           // 重要なY-botボーンをログ出力
           if (bone.name.includes('mixamorigLeftArm') || 
               bone.name.includes('mixamorigRightArm') || 
               bone.name.includes('mixamorigLeftForeArm') || 
-              bone.name.includes('mixamorigRightForeArm')) {
-            console.log(`⭐ [${index}] "${bone.name}" (重要ボーン)`);
+              bone.name.includes('mixamorigRightForeArm') ||
+              bone.name.includes('mixamorigSpine') ||
+              bone.name.includes('mixamorigLeftUpLeg') ||
+              bone.name.includes('mixamorigRightUpLeg') ||
+              bone.name.includes('mixamorigLeftLeg') ||
+              bone.name.includes('mixamorigRightLeg')) {
+            console.log(`⭐ [${index}] "${bone.name}" (重要ボーン) - 初期回転保存`);
           }
         });
+        
+        // 🔍 調査4: 骨格階層構造の調査
+        console.log('\n🌳 Y-bot骨格階層構造:');
+        const printHierarchy = (bone: THREE.Object3D, depth: number = 0) => {
+          const indent = '  '.repeat(depth);
+          console.log(`${indent}${bone.name || '(無名)'} [${bone.type}]`);
+          bone.children.forEach(child => printHierarchy(child, depth + 1));
+        };
+        object.skeleton.bones[0] && printHierarchy(object.skeleton.bones[0]);
       }
     });
 
@@ -119,9 +145,30 @@ export default function StickmanModel({ poseData }: StickmanModelProps) {
         );
 
         if (targetBone) {
-          // 回転を適用
+          // 🔍 調査5: 回転適用プロセスの詳細調査
           const oldRotation = targetBone.quaternion.clone();
-          targetBone.quaternion.slerp(rotation, 0.3); // Y-bot用により強い補間
+          const oldEuler = new THREE.Euler().setFromQuaternion(oldRotation);
+          const newEuler = new THREE.Euler().setFromQuaternion(rotation);
+          
+          console.log(`\n🔄 [${jointName}] → [${targetBone.name}] 回転適用詳細:`);
+          console.log(`  MediaPipe計算回転: x=${newEuler.x.toFixed(3)}, y=${newEuler.y.toFixed(3)}, z=${newEuler.z.toFixed(3)}`);
+          console.log(`  ボーン適用前回転: x=${oldEuler.x.toFixed(3)}, y=${oldEuler.y.toFixed(3)}, z=${oldEuler.z.toFixed(3)}`);
+          
+          // 🔧 改善された回転適用（より反応性を高める）
+          const interpolationFactor = jointName.includes('Shoulder') ? 0.8 : 0.6; // 肩はより反応性を高く
+          targetBone.quaternion.slerp(rotation, interpolationFactor);
+          
+          // 🔧 ボーン階層の更新を強制
+          if (targetBone.parent) {
+            targetBone.parent.updateMatrixWorld(true);
+          }
+          targetBone.updateMatrixWorld(true);
+          
+          const finalEuler = new THREE.Euler().setFromQuaternion(targetBone.quaternion);
+          console.log(`  ボーン適用後回転: x=${finalEuler.x.toFixed(3)}, y=${finalEuler.y.toFixed(3)}, z=${finalEuler.z.toFixed(3)}`);
+          console.log(`  変化量: ${oldRotation.angleTo(targetBone.quaternion).toFixed(3)}rad`);
+          console.log(`  補間率: ${interpolationFactor}`);
+          
           appliedCount++;
           
           console.log(`🤖 Y-bot回転適用: ${jointName} → ${targetBone.name} (変化: ${oldRotation.angleTo(targetBone.quaternion).toFixed(3)}rad)`);

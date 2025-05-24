@@ -14,72 +14,73 @@ export function calculateJointRotations(poseData: PoseLandmarkerResult): { [key:
   const landmarks = poseData.landmarks[0];
   const rotations: { [key: string]: THREE.Quaternion } = {};
 
-  // MediaPipeの座標を3D空間に変換（スケールを調整）
+  // 🔧 改善された座標系変換関数
   const getPosition = (landmarkIndex: number): THREE.Vector3 => {
     const landmark = landmarks[landmarkIndex];
     if (!landmark) return new THREE.Vector3(0, 0, 0);
     
+    // MediaPipe座標系 → Three.js座標系の正確な変換
     return new THREE.Vector3(
-      (landmark.x - 0.5) * 2,    // -1 to 1 (幅を狭めて正規化)
-      (0.5 - landmark.y) * 2,   // -1 to 1 (Y軸反転、高さも正規化)
-      (landmark.z || 0) * 2      // -1 to 1 (深度も正規化)
+      -(landmark.x - 0.5) * 2,    // X軸反転（MediaPipeは左右反転）
+      -(landmark.y - 0.5) * 2,   // Y軸は下向きが正
+      (landmark.z || 0) * 1      // Z軸はそのまま（スケール調整）
     );
   };
 
-  // ランドマークの可視性をチェック（より寛容に）
-  const isLandmarkVisible = (index: number): boolean => {
+  // 🔧 強化された可視性チェック
+  const isLandmarkVisible = (index: number, minVisibility: number = 0.7): boolean => {
     const landmark = landmarks[index];
     if (!landmark) {
       console.log(`⚠️ ランドマーク ${index} が存在しません`);
       return false;
     }
     
-    const visible = landmark.visibility === undefined || landmark.visibility > 0.3; // 0.5 → 0.3に緩和
+    const visible = landmark.visibility === undefined || landmark.visibility > minVisibility;
     if (!visible) {
-      console.log(`⚠️ ランドマーク ${index} の可視性が低い: ${landmark.visibility}`);
+      console.log(`⚠️ ランドマーク ${index} の可視性が低い: ${landmark.visibility} < ${minVisibility}`);
     }
     return visible;
   };
 
-  // 3点から関節の回転を計算する関数（改善版）
+  // 🔧 品質チェック付き関節回転計算
   const calculateJointRotation = (
     parentIndex: number, 
     jointIndex: number, 
     childIndex: number, 
-    upVector: THREE.Vector3 = new THREE.Vector3(0, 1, 0)
-  ): THREE.Quaternion => {
-    // 可視性チェック
-    if (!isLandmarkVisible(parentIndex) || !isLandmarkVisible(jointIndex) || !isLandmarkVisible(childIndex)) {
-      console.log(`⚠️ 関節計算スキップ: 親${parentIndex}, 関節${jointIndex}, 子${childIndex} の可視性不足`);
-      return new THREE.Quaternion(); // アイデンティティ
+    jointName: string,
+    minVisibility: number = 0.7
+  ): THREE.Quaternion | null => {
+    // 厳格な可視性チェック
+    if (!isLandmarkVisible(parentIndex, minVisibility) || 
+        !isLandmarkVisible(jointIndex, minVisibility) || 
+        !isLandmarkVisible(childIndex, minVisibility)) {
+      console.log(`❌ ${jointName}: 可視性不足によりスキップ`);
+      return null;
     }
 
     const parentPos = getPosition(parentIndex);
     const jointPos = getPosition(jointIndex);
     const childPos = getPosition(childIndex);
     
-    // ベクトルを計算
-    const toParent = parentPos.clone().sub(jointPos).normalize();
-    const toChild = childPos.clone().sub(jointPos).normalize();
+    // ベクトルの品質チェック
+    const toChild = childPos.clone().sub(jointPos);
+    const toParent = parentPos.clone().sub(jointPos);
     
-    // 関節の向きを計算（子の方向をメイン）
-    const jointDirection = toChild;
+    if (toChild.length() < 0.01 || toParent.length() < 0.01) {
+      console.log(`❌ ${jointName}: ベクトルが短すぎます`);
+      return null;
+    }
     
-    // サイドベクトルを計算（親→子と上ベクトルの外積）
-    const sideVector = jointDirection.clone().cross(upVector).normalize();
+    toChild.normalize();
+    toParent.normalize();
     
-    // より自然な上ベクトルを再計算
-    const naturalUpVector = sideVector.clone().cross(jointDirection).normalize();
+    // より自然な回転計算（Y-bot用に最適化）
+    const defaultDirection = new THREE.Vector3(0, -1, 0); // Y-botの標準下向き
+    const currentDirection = toChild;
     
-    // 回転行列を作成
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeBasis(sideVector, naturalUpVector, jointDirection);
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(defaultDirection, currentDirection);
     
-    // クォータニオンに変換
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromRotationMatrix(rotationMatrix);
-    
-    console.log(`✅ 関節回転計算成功: 親${parentIndex}→関節${jointIndex}→子${childIndex}`);
+    console.log(`✅ ${jointName}: 高品質回転計算成功`);
     return quaternion;
   };
 
@@ -87,9 +88,32 @@ export function calculateJointRotations(poseData: PoseLandmarkerResult): { [key:
     console.log('🧮 関節角度計算開始...');
     console.log(`📊 受信したランドマーク数: ${landmarks.length}`);
     
+    // 🔍 調査1: MediaPipeの生データを詳細に調査
+    console.log('\n📋 MediaPipe生データ調査:');
+    const keyLandmarks = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+    keyLandmarks.forEach(index => {
+      const landmark = landmarks[index];
+      if (landmark) {
+        console.log(`  [${index}] 生座標: x=${landmark.x.toFixed(4)}, y=${landmark.y.toFixed(4)}, z=${landmark.z?.toFixed(4) || 'undefined'}, visibility=${landmark.visibility?.toFixed(3) || 'undefined'}`);
+        
+        // 変換後座標も表示
+        const converted = getPosition(index);
+        console.log(`       変換後: x=${converted.x.toFixed(4)}, y=${converted.y.toFixed(4)}, z=${converted.z.toFixed(4)}`);
+      }
+    });
+    
+    // 🔍 調査2: 座標系の整合性チェック
+    console.log('\n🔍 座標系整合性チェック:');
+    if (landmarks[11] && landmarks[12]) {
+      const leftShoulder = landmarks[11];
+      const rightShoulder = landmarks[12];
+      console.log(`  左肩 vs 右肩: x差=${(rightShoulder.x - leftShoulder.x).toFixed(4)} (正の値=右肩が右側)`);
+      console.log(`  MediaPipe座標系: 左肩x=${leftShoulder.x.toFixed(4)}, 右肩x=${rightShoulder.x.toFixed(4)}`);
+    }
+    
     // 重要なランドマークの可視性を確認
     const importantLandmarks = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
-    console.log('🔍 重要なランドマークの状態:');
+    console.log('\n🔍 重要なランドマークの状態:');
     importantLandmarks.forEach(index => {
       const landmark = landmarks[index];
       if (landmark) {
@@ -99,71 +123,34 @@ export function calculateJointRotations(poseData: PoseLandmarkerResult): { [key:
       }
     });
     
-    // 可視性を無視して強制的に基本的な関節を計算（テスト用）
-    console.log('🧪 強制的に基本関節を計算中...');
+    // 🔧 品質重視の関節計算
+    console.log('\n🎯 品質重視の関節計算開始...');
     
-    // 左肩の回転（強制）- ランドマーク11（左肩）が存在する場合
-    if (landmarks[11] && landmarks[13]) {
-      console.log('🔧 左肩の回転を強制計算中...');
-      const leftShoulderPos = getPosition(11);
-      const leftElbowPos = getPosition(13);
-      
-      // 基本的な回転を計算（とりあえず腕を下ろした状態から始める）
-      const armDirection = leftElbowPos.clone().sub(leftShoulderPos).normalize();
-      const defaultDirection = new THREE.Vector3(1, 0, 0); // X軸方向
-      
-      const leftShoulderRotation = new THREE.Quaternion().setFromUnitVectors(defaultDirection, armDirection);
+    // 高可視性データのみで肩の計算
+    const leftShoulderRotation = calculateJointRotation(11, 11, 13, 'leftShoulder', 0.8);
+    if (leftShoulderRotation) {
       rotations['leftShoulder'] = leftShoulderRotation;
-      console.log('✅ 左肩の回転を計算（強制）');
     }
     
-    // 右肩の回転（強制）
-    if (landmarks[12] && landmarks[14]) {
-      console.log('🔧 右肩の回転を強制計算中...');
-      const rightShoulderPos = getPosition(12);
-      const rightElbowPos = getPosition(14);
-      
-      const armDirection = rightElbowPos.clone().sub(rightShoulderPos).normalize();
-      const defaultDirection = new THREE.Vector3(-1, 0, 0); // -X軸方向（右腕）
-      
-      const rightShoulderRotation = new THREE.Quaternion().setFromUnitVectors(defaultDirection, armDirection);
+    const rightShoulderRotation = calculateJointRotation(12, 12, 14, 'rightShoulder', 0.8);
+    if (rightShoulderRotation) {
       rotations['rightShoulder'] = rightShoulderRotation;
-      console.log('✅ 右肩の回転を計算（強制）');
     }
     
-    // 左肘の回転（強制）
-    if (landmarks[11] && landmarks[13] && landmarks[15]) {
-      console.log('🔧 左肘の回転を強制計算中...');
-      const leftShoulderPos = getPosition(11);
-      const leftElbowPos = getPosition(13);
-      const leftWristPos = getPosition(15);
-      
-      const upperArmDirection = leftElbowPos.clone().sub(leftShoulderPos).normalize();
-      const forearmDirection = leftWristPos.clone().sub(leftElbowPos).normalize();
-      
-      const leftElbowRotation = new THREE.Quaternion().setFromUnitVectors(upperArmDirection, forearmDirection);
+    // 肘の計算（可視性要求を緩和）
+    const leftElbowRotation = calculateJointRotation(11, 13, 15, 'leftElbow', 0.5);
+    if (leftElbowRotation) {
       rotations['leftElbow'] = leftElbowRotation;
-      console.log('✅ 左肘の回転を計算（強制）');
     }
     
-    // 右肘の回転（強制）
-    if (landmarks[12] && landmarks[14] && landmarks[16]) {
-      console.log('🔧 右肘の回転を強制計算中...');
-      const rightShoulderPos = getPosition(12);
-      const rightElbowPos = getPosition(14);
-      const rightWristPos = getPosition(16);
-      
-      const upperArmDirection = rightElbowPos.clone().sub(rightShoulderPos).normalize();
-      const forearmDirection = rightWristPos.clone().sub(rightElbowPos).normalize();
-      
-      const rightElbowRotation = new THREE.Quaternion().setFromUnitVectors(upperArmDirection, forearmDirection);
+    const rightElbowRotation = calculateJointRotation(12, 14, 16, 'rightElbow', 0.5);
+    if (rightElbowRotation) {
       rotations['rightElbow'] = rightElbowRotation;
-      console.log('✅ 右肘の回転を計算（強制）');
     }
     
-    // 胴体（脊椎）の回転を追加
-    if (landmarks[11] && landmarks[12] && landmarks[23] && landmarks[24]) {
-      console.log('🔧 胴体の回転を強制計算中...');
+    // 体幹の計算（肩と腰の中心を使用）
+    if (isLandmarkVisible(11, 0.8) && isLandmarkVisible(12, 0.8) && 
+        isLandmarkVisible(23, 0.3) && isLandmarkVisible(24, 0.3)) {
       const leftShoulder = getPosition(11);
       const rightShoulder = getPosition(12);
       const leftHip = getPosition(23);
@@ -177,65 +164,28 @@ export function calculateJointRotations(poseData: PoseLandmarkerResult): { [key:
       
       const spineRotation = new THREE.Quaternion().setFromUnitVectors(defaultSpine, spineDirection);
       rotations['spine'] = spineRotation;
-      console.log('✅ 胴体の回転を計算（強制）');
+      console.log('✅ 体幹の回転計算成功');
     }
     
-    // 左太もも（ヒップ）の回転を追加
-    if (landmarks[23] && landmarks[25]) {
-      console.log('🔧 左太ももの回転を強制計算中...');
-      const leftHip = getPosition(23);
-      const leftKnee = getPosition(25);
-      
-      const thighDirection = leftKnee.clone().sub(leftHip).normalize();
-      const defaultThigh = new THREE.Vector3(0, -1, 0);
-      
-      const leftThighRotation = new THREE.Quaternion().setFromUnitVectors(defaultThigh, thighDirection);
-      rotations['leftHip'] = leftThighRotation;
-      console.log('✅ 左太ももの回転を計算（強制）');
+    // 脚部の計算（可視性が低い場合はスキップ）
+    const leftHipRotation = calculateJointRotation(23, 23, 25, 'leftHip', 0.2);
+    if (leftHipRotation) {
+      rotations['leftHip'] = leftHipRotation;
     }
     
-    // 右太もも（ヒップ）の回転を追加
-    if (landmarks[24] && landmarks[26]) {
-      console.log('🔧 右太ももの回転を強制計算中...');
-      const rightHip = getPosition(24);
-      const rightKnee = getPosition(26);
-      
-      const thighDirection = rightKnee.clone().sub(rightHip).normalize();
-      const defaultThigh = new THREE.Vector3(0, -1, 0);
-      
-      const rightThighRotation = new THREE.Quaternion().setFromUnitVectors(defaultThigh, thighDirection);
-      rotations['rightHip'] = rightThighRotation;
-      console.log('✅ 右太ももの回転を計算（強制）');
+    const rightHipRotation = calculateJointRotation(24, 24, 26, 'rightHip', 0.2);
+    if (rightHipRotation) {
+      rotations['rightHip'] = rightHipRotation;
     }
     
-    // 左膝の回転を追加
-    if (landmarks[23] && landmarks[25] && landmarks[27]) {
-      console.log('🔧 左膝の回転を強制計算中...');
-      const leftHip = getPosition(23);
-      const leftKnee = getPosition(25);
-      const leftAnkle = getPosition(27);
-      
-      const thighDirection = leftKnee.clone().sub(leftHip).normalize();
-      const shinDirection = leftAnkle.clone().sub(leftKnee).normalize();
-      
-      const leftKneeRotation = new THREE.Quaternion().setFromUnitVectors(thighDirection, shinDirection);
+    const leftKneeRotation = calculateJointRotation(23, 25, 27, 'leftKnee', 0.1);
+    if (leftKneeRotation) {
       rotations['leftKnee'] = leftKneeRotation;
-      console.log('✅ 左膝の回転を計算（強制）');
     }
     
-    // 右膝の回転を追加
-    if (landmarks[24] && landmarks[26] && landmarks[28]) {
-      console.log('🔧 右膝の回転を強制計算中...');
-      const rightHip = getPosition(24);
-      const rightKnee = getPosition(26);
-      const rightAnkle = getPosition(28);
-      
-      const thighDirection = rightKnee.clone().sub(rightHip).normalize();
-      const shinDirection = rightAnkle.clone().sub(rightKnee).normalize();
-      
-      const rightKneeRotation = new THREE.Quaternion().setFromUnitVectors(thighDirection, shinDirection);
+    const rightKneeRotation = calculateJointRotation(24, 26, 28, 'rightKnee', 0.1);
+    if (rightKneeRotation) {
       rotations['rightKnee'] = rightKneeRotation;
-      console.log('✅ 右膝の回転を計算（強制）');
     }
     
     console.log(`🎯 計算完了: ${Object.keys(rotations).length}個の関節角度`);
