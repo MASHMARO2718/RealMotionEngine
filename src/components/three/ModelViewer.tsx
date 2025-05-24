@@ -7,11 +7,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-import { calculateJointRotations } from '../../lib/shared/pose-utils';
+import { calculateJointRotations } from '../../lib/shared/pose-utils';import StickmanModel from './StickmanModel';
 
 function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF('/models/human_bone.glb') as any;
+  const { scene } = useGLTF('/models/stickman.glb') as any;
   const [modelLoaded, setModelLoaded] = useState(false);
   const boneVisualizationRef = useRef<THREE.Group | null>(null);
   const bonesRef = useRef<THREE.Bone[]>([]);  // ボーンの参照を保存
@@ -233,31 +233,27 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
       }
       
       // モデルの位置とスケールを調整
-      if (group.current) {
-        // モデルを原点に配置
-        group.current.position.set(0, 0, 0);
-        
-        // サイズに応じてスケールを調整
-        let scale = 1;
-        if (analysis.size.length() > 0) {
-          // モデルが小さすぎる場合は拡大、大きすぎる場合は縮小
-          const maxSize = Math.max(analysis.size.x, analysis.size.y, analysis.size.z);
-          if (maxSize < 1) {
-            scale = 5 / maxSize;  // 小さすぎる場合は拡大
-          } else if (maxSize > 10) {
-            scale = 5 / maxSize;  // 大きすぎる場合は縮小
-          }
+      let scale = 1;
+      if (analysis.size.length() > 0) {
+        // モデルが小さすぎる場合は拡大、大きすぎる場合は縮小
+        const maxSize = Math.max(analysis.size.x, analysis.size.y, analysis.size.z);
+        if (maxSize < 1) {
+          scale = 5 / maxSize;  // 小さすぎる場合は拡大
+        } else if (maxSize > 10) {
+          scale = 5 / maxSize;  // 大きすぎる場合は縮小
         }
-        
+      }
+      
+      if (group.current) {
         group.current.scale.set(scale, scale, scale);
         console.log(`🔧 スケール調整: ${scale}`);
         
         // 足が地面につくように調整（モデルの最低点をY=0に）
         const bbox = new THREE.Box3().setFromObject(scene);
-        const minY = bbox.min.y;  // モデルの最低点（足）
-        const yOffset = Math.max(0, -minY * scale);  // 最低点がY=0以上になるように調整
+        const minY = bbox.min.y * scale;  // スケール適用後の最低点（足）
+        const yOffset = -minY;  // 最低点をY=0に配置
         group.current.position.setY(yOffset);
-        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)} (Y=0以下防止)`);
+        console.log(`🦵 足を地面に配置: 最低点 ${minY.toFixed(2)} → Y位置調整 ${yOffset.toFixed(2)} (足のY座標=0に設定)`);
       }
       
       setModelLoaded(true);
@@ -284,37 +280,65 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
       // MediaPipeのポーズデータから関節角度を計算
       const rotations = calculateJointRotations(poseData);
       
-      if (rotations && bonesRef.current.length > 0) {
-        console.log('🎯 ボーンアニメーション開始:', Object.keys(rotations));
+      if (rotations && bonesRef.current.length > 0) {        console.log('🎯 ボーンアニメーション開始:', Object.keys(rotations));                // 利用可能なボーン名を一度だけ出力（初回のみ）        if (bonesRef.current.length > 0 && Object.keys(rotations).length === 8) { // 計算完了時のみ          console.log('🦴 利用可能なボーン名:');          bonesRef.current.forEach((bone, index) => {            console.log(`  [${index}] "${bone.name}"`);          });        }
         
         // 計算された回転をボーンに適用
         bonesRef.current.forEach((bone, index) => {
-          // ボーン名から適切な回転データを見つける
           const boneName = bone.name.toLowerCase();
-          console.log(`🦴 ボーン[${index}]: "${bone.name}" (小文字: "${boneName}")`);
-          
           let rotationApplied = false;
           
-          // より詳細なボーン名マッピング
+          // より包括的なボーン名マッピング
           for (const [jointName, rotation] of Object.entries(rotations)) {
             if (rotation instanceof THREE.Quaternion) {
-              // 複数の可能性をチェック
-              const shouldApply = 
-                boneName.includes(jointName.toLowerCase()) ||
-                jointName.toLowerCase().includes(boneName) ||
-                // 左右の詳細マッピング
-                (jointName === 'leftShoulder' && (boneName.includes('left') && boneName.includes('shoulder'))) ||
-                (jointName === 'rightShoulder' && (boneName.includes('right') && boneName.includes('shoulder'))) ||
-                (jointName === 'leftElbow' && (boneName.includes('left') && boneName.includes('elbow'))) ||
-                (jointName === 'rightElbow' && (boneName.includes('right') && boneName.includes('elbow'))) ||
-                (jointName === 'leftHip' && (boneName.includes('left') && boneName.includes('hip'))) ||
-                (jointName === 'rightHip' && (boneName.includes('right') && boneName.includes('hip'))) ||
-                (jointName === 'leftKnee' && (boneName.includes('left') && boneName.includes('knee'))) ||
-                (jointName === 'rightKnee' && (boneName.includes('right') && boneName.includes('knee'))) ||
-                (jointName === 'spine' && boneName.includes('spine'));
+              let shouldApply = false;
+              
+              // 詳細なマッピングルール
+              switch (jointName) {
+                case 'leftShoulder':
+                  shouldApply = boneName.includes('left') && 
+                    (boneName.includes('shoulder') || boneName.includes('arm') || boneName.includes('upper'));
+                  break;
+                case 'rightShoulder':
+                  shouldApply = boneName.includes('right') && 
+                    (boneName.includes('shoulder') || boneName.includes('arm') || boneName.includes('upper'));
+                  break;
+                case 'leftElbow':
+                  shouldApply = boneName.includes('left') && 
+                    (boneName.includes('elbow') || boneName.includes('forearm') || boneName.includes('lower'));
+                  break;
+                case 'rightElbow':
+                  shouldApply = boneName.includes('right') && 
+                    (boneName.includes('elbow') || boneName.includes('forearm') || boneName.includes('lower'));
+                  break;
+                case 'leftHip':
+                  shouldApply = boneName.includes('left') && 
+                    (boneName.includes('hip') || boneName.includes('thigh') || boneName.includes('leg'));
+                  break;
+                case 'rightHip':
+                  shouldApply = boneName.includes('right') && 
+                    (boneName.includes('hip') || boneName.includes('thigh') || boneName.includes('leg'));
+                  break;
+                case 'leftKnee':
+                  shouldApply = boneName.includes('left') && 
+                    (boneName.includes('knee') || boneName.includes('shin') || boneName.includes('calf'));
+                  break;
+                case 'rightKnee':
+                  shouldApply = boneName.includes('right') && 
+                    (boneName.includes('knee') || boneName.includes('shin') || boneName.includes('calf'));
+                  break;
+                case 'spine':
+                  shouldApply = boneName.includes('spine') || boneName.includes('torso') || 
+                    boneName.includes('back') || boneName.includes('chest');
+                  break;
+                default:
+                  // フォールバック：部分的な名前マッチング
+                  shouldApply = boneName.includes(jointName.toLowerCase()) || 
+                    jointName.toLowerCase().includes(boneName);
+              }
               
               if (shouldApply) {
-                bone.quaternion.copy(rotation);
+                // 回転をスムーズに適用（線形補間）
+                bone.quaternion.slerp(rotation, 0.1);
                 console.log(`✅ 回転適用: ボーン"${bone.name}" ← 関節"${jointName}"`);
                 rotationApplied = true;
                 break;
@@ -412,7 +436,7 @@ function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
           <meshStandardMaterial color="orange" />
         </mesh>
       }>
-        <HumanBoneModel poseData={poseData} />
+        <StickmanModel poseData={poseData} />
       </Suspense>
       
       <OrbitControls 
