@@ -139,29 +139,30 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
     const visualGroup = new THREE.Group();
     visualGroup.name = 'BoneVisualization';
     
-    console.log(`🎨 ${bones.length}個のボーンをオレンジ色で可視化中...`);
+    console.log(`🎨 ${bones.length}個のボーンを自然な骨格として可視化中...`);
     
     bones.forEach((bone, index) => {
       // ボーンの世界座標を取得
       const worldPosition = new THREE.Vector3();
       bone.getWorldPosition(worldPosition);
       
-      // ボーン位置にオレンジ色の球体を配置
-      const boneSphere = new THREE.Mesh(
-        new THREE.SphereGeometry(0.02, 8, 8),
+      // 関節部分（小さめの球体）
+      const jointSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 16, 16),
         new THREE.MeshStandardMaterial({ 
-          color: 0xff6600,  // オレンジ色
-          metalness: 0.2,
-          roughness: 0.8
+          color: 0xff5500,  // 少し濃いオレンジ
+          metalness: 0.4,
+          roughness: 0.5,
+          emissive: 0x221100  // わずかな発光
         })
       );
-      boneSphere.position.copy(worldPosition);
-      boneSphere.name = `bone_sphere_${bone.name || index}`;
-      visualGroup.add(boneSphere);
+      jointSphere.position.copy(worldPosition);
+      jointSphere.name = `bone_sphere_${bone.name || index}`;
+      visualGroup.add(jointSphere);
       
-      console.log(`   🟠 ボーン[${index}] "${bone.name}" 位置: (${worldPosition.x.toFixed(2)}, ${worldPosition.y.toFixed(2)}, ${worldPosition.z.toFixed(2)})`);
+      console.log(`   🟠 関節[${index}] "${bone.name}" 位置: (${worldPosition.x.toFixed(2)}, ${worldPosition.y.toFixed(2)}, ${worldPosition.z.toFixed(2)})`);
       
-      // 親ボーンがある場合、オレンジ色の線で接続
+      // 親ボーンがある場合、骨のような形状で接続
       if (bone.parent && bone.parent instanceof THREE.Bone) {
         const parentWorldPosition = new THREE.Vector3();
         bone.parent.getWorldPosition(parentWorldPosition);
@@ -169,26 +170,36 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
         const direction = new THREE.Vector3().subVectors(worldPosition, parentWorldPosition);
         const distance = direction.length();
         
-        if (distance > 0.01) { // 極小距離は無視
-          // 線の代わりに細い円柱で接続
-          const cylinder = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.02, 0.02, distance, 8),
+        if (distance > 0.01) {
+          // 骨のような形状（両端が細くなる円錐台）
+          const boneGeometry = new THREE.CylinderGeometry(
+            0.025,  // 上端の半径（細め）
+            0.05,   // 下端の半径（太め）
+            distance, 
+            12,     // セグメント数
+            1,      // 高さセグメント
+            false   // オープンエンド
+          );
+          
+          const boneMesh = new THREE.Mesh(
+            boneGeometry,
             new THREE.MeshStandardMaterial({ 
-              color: 0xff8800,  // 少し明るいオレンジ
-              metalness: 0.1,
-              roughness: 0.9
+              color: 0xff7722,  // 温かみのあるオレンジ
+              metalness: 0.3,
+              roughness: 0.6,
+              emissive: 0x110500  // わずかな発光
             })
           );
           
-          // 円柱を適切に配置・回転
+          // 骨の配置と回転
           const midpoint = new THREE.Vector3().addVectors(worldPosition, parentWorldPosition).multiplyScalar(0.5);
-          cylinder.position.copy(midpoint);
-          cylinder.lookAt(worldPosition);
-          cylinder.rotateX(Math.PI / 2);
-          cylinder.name = `bone_connection_${bone.parent.name}_${bone.name}`;
-          visualGroup.add(cylinder);
+          boneMesh.position.copy(midpoint);
+          boneMesh.lookAt(worldPosition);
+          boneMesh.rotateX(Math.PI / 2);
+          boneMesh.name = `bone_connection_${bone.parent.name}_${bone.name}`;
+          visualGroup.add(boneMesh);
           
-          console.log(`   🔗 接続: ${bone.parent.name} → ${bone.name} (距離: ${distance.toFixed(2)})`);
+          console.log(`   🦴 骨: ${bone.parent.name} → ${bone.name} (長さ: ${distance.toFixed(2)})`);
         }
       }
     });
@@ -280,18 +291,39 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
         bonesRef.current.forEach((bone, index) => {
           // ボーン名から適切な回転データを見つける
           const boneName = bone.name.toLowerCase();
+          console.log(`🦴 ボーン[${index}]: "${bone.name}" (小文字: "${boneName}")`);
           
-          // ボーン名のマッピング（例: "LeftShoulder" → "leftShoulder"）
+          let rotationApplied = false;
+          
+          // より詳細なボーン名マッピング
           for (const [jointName, rotation] of Object.entries(rotations)) {
-            if (boneName.includes(jointName.toLowerCase()) || 
-                jointName.toLowerCase().includes(boneName)) {
+            if (rotation instanceof THREE.Quaternion) {
+              // 複数の可能性をチェック
+              const shouldApply = 
+                boneName.includes(jointName.toLowerCase()) ||
+                jointName.toLowerCase().includes(boneName) ||
+                // 左右の詳細マッピング
+                (jointName === 'leftShoulder' && (boneName.includes('left') && boneName.includes('shoulder'))) ||
+                (jointName === 'rightShoulder' && (boneName.includes('right') && boneName.includes('shoulder'))) ||
+                (jointName === 'leftElbow' && (boneName.includes('left') && boneName.includes('elbow'))) ||
+                (jointName === 'rightElbow' && (boneName.includes('right') && boneName.includes('elbow'))) ||
+                (jointName === 'leftHip' && (boneName.includes('left') && boneName.includes('hip'))) ||
+                (jointName === 'rightHip' && (boneName.includes('right') && boneName.includes('hip'))) ||
+                (jointName === 'leftKnee' && (boneName.includes('left') && boneName.includes('knee'))) ||
+                (jointName === 'rightKnee' && (boneName.includes('right') && boneName.includes('knee'))) ||
+                (jointName === 'spine' && boneName.includes('spine'));
               
-              if (rotation instanceof THREE.Quaternion) {
+              if (shouldApply) {
                 bone.quaternion.copy(rotation);
-                console.log(`🔄 回転適用: ボーン"${bone.name}" ← 関節"${jointName}"`);
+                console.log(`✅ 回転適用: ボーン"${bone.name}" ← 関節"${jointName}"`);
+                rotationApplied = true;
+                break;
               }
-              break;
             }
+          }
+          
+          if (!rotationApplied) {
+            console.log(`⚠️ 回転未適用: ボーン"${bone.name}" - マッピングが見つからない`);
           }
         });
         
@@ -351,11 +383,12 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
 function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   return (
     <>
-      {/* 明るいライティング */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={0.8} castShadow />
-      <directionalLight position={[-10, 10, -5]} intensity={0.4} />
-      <directionalLight position={[0, -10, 0]} intensity={0.3} />
+      {/* 改善されたライティング */}
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 10, 5]} intensity={1.0} castShadow />
+      <directionalLight position={[-10, 5, -5]} intensity={0.6} />
+      <directionalLight position={[0, -5, 0]} intensity={0.4} />
+      <pointLight position={[0, 5, 0]} intensity={0.3} color={0xffffff} />
       
       {/* グリッド */}
       <Grid
@@ -363,10 +396,10 @@ function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
         position={[0, -0.01, 0]}
         cellSize={1}
         cellThickness={0.5}
-        cellColor="#888888"
+        cellColor="#999999"
         sectionSize={5}
         sectionThickness={1}
-        sectionColor="#444444"
+        sectionColor="#666666"
         fadeStrength={1}
         followCamera={false}
         infiniteGrid={true}
@@ -388,7 +421,7 @@ function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
         enableZoom={true}
         enableRotate={true}
       />
-      <Environment preset="city" />
+      <Environment preset="sunset" />
     </>
   );
 }
