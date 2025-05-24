@@ -60,6 +60,30 @@ export default function StickmanModel({ poseData }: StickmanModelProps) {
               bone.name.includes('mixamorigLeftLeg') ||
               bone.name.includes('mixamorigRightLeg')) {
             console.log(`⭐ [${index}] "${bone.name}" (重要ボーン) - 初期回転保存`);
+            
+            // 🔍 肩ボーンの詳細分析
+            if (bone.name.includes('mixamorigLeftArm') || bone.name.includes('mixamorigRightArm')) {
+              console.log(`    🔍 肩ボーン詳細分析:`);
+              const worldDirection = bone.getWorldDirection(new THREE.Vector3());
+              const rotationArray = [bone.rotation.x, bone.rotation.y, bone.rotation.z];
+              const worldPosition = bone.getWorldPosition(new THREE.Vector3());
+              
+              console.log(`       初期方向ベクトル: ${worldDirection.x.toFixed(3)}, ${worldDirection.y.toFixed(3)}, ${worldDirection.z.toFixed(3)}`);
+              console.log(`       ローカル回転: ${rotationArray.map(v => v.toFixed(3)).join(', ')}`);
+              console.log(`       ワールド位置: ${worldPosition.x.toFixed(3)}, ${worldPosition.y.toFixed(3)}, ${worldPosition.z.toFixed(3)}`);
+            }
+            
+            // 🔍 足の付け根ボーンの詳細分析
+            if (bone.name.includes('mixamorigLeftUpLeg') || bone.name.includes('mixamorigRightUpLeg')) {
+              console.log(`    🦵 足の付け根ボーン詳細分析:`);
+              const worldDirection = bone.getWorldDirection(new THREE.Vector3());
+              const rotationArray = [bone.rotation.x, bone.rotation.y, bone.rotation.z];
+              const worldPosition = bone.getWorldPosition(new THREE.Vector3());
+              
+              console.log(`       初期方向ベクトル: ${worldDirection.x.toFixed(3)}, ${worldDirection.y.toFixed(3)}, ${worldDirection.z.toFixed(3)}`);
+              console.log(`       ローカル回転: ${rotationArray.map(v => v.toFixed(3)).join(', ')}`);
+              console.log(`       ワールド位置: ${worldPosition.x.toFixed(3)}, ${worldPosition.y.toFixed(3)}, ${worldPosition.z.toFixed(3)}`);
+            }
           }
         });
         
@@ -155,7 +179,8 @@ export default function StickmanModel({ poseData }: StickmanModelProps) {
           console.log(`  ボーン適用前回転: x=${oldEuler.x.toFixed(3)}, y=${oldEuler.y.toFixed(3)}, z=${oldEuler.z.toFixed(3)}`);
           
           // 🔧 改善された回転適用（より反応性を高める）
-          const interpolationFactor = jointName.includes('Shoulder') ? 0.8 : 0.6; // 肩はより反応性を高く
+          const interpolationFactor = jointName.includes('Shoulder') ? 0.9 : 
+                                     jointName.includes('Hip') ? 0.7 : 0.6; // 足の付け根も高反応性
           targetBone.quaternion.slerp(rotation, interpolationFactor);
           
           // 🔧 ボーン階層の更新を強制
