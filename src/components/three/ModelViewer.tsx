@@ -7,9 +7,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-import { calculateJointRotations } from '../../lib/shared/pose-utils';import StickmanModel from './StickmanModel';
-
-function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
+import { calculateJointRotations } from '../../lib/shared/pose-utils';import StickmanModel from './StickmanModel';function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/models/stickman.glb') as any;
   const [modelLoaded, setModelLoaded] = useState(false);
