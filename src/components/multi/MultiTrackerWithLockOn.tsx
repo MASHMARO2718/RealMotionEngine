@@ -109,6 +109,9 @@ export default function MultiTrackerWithLockOn({
   // 🔊 前回の全身検出状態を記録（状態変化検出用）
   const [previousFullBodyVisible, setPreviousFullBodyVisible] = useState(false);
 
+  // 🎯 Lock-onシステムの動的制御
+  const [lockOnSystemEnabled, setLockOnSystemEnabled] = useState(lockOnEnabled);
+
   // Simple pose validation for lock-on
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
     if (!result.landmarks || result.landmarks.length === 0) return false;
@@ -579,7 +582,7 @@ export default function MultiTrackerWithLockOn({
           
           if (trackerStates.pose.enabled) {
             // Use white color for pose landmarks when locked
-            const useWhiteColor = lockOnEnabled && simpleLockState === 'LOCKED';
+            const useWhiteColor = lockOnSystemEnabled && simpleLockState === 'LOCKED';
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize, useWhiteColor);
           }
           
@@ -634,7 +637,7 @@ export default function MultiTrackerWithLockOn({
           }
           
           // Simple lock-on logic (ROIとは独立)
-          if (lockOnEnabled) {
+          if (lockOnSystemEnabled) {
             const isPoseValid = validatePoseForLock(result);
             console.log('🔒 Lock-on判定:', {
               isPoseValid,
@@ -691,7 +694,7 @@ export default function MultiTrackerWithLockOn({
         } else {
           console.log('❌ ポーズ検出失敗またはランドマークなし');
           
-          if (lockOnEnabled) {
+          if (lockOnSystemEnabled) {
             // No pose detected - ROIをクリア
             console.log('🗑️ ROIをクリア (ポーズ検出失敗)');
             setCurrentROI(null);
@@ -752,7 +755,7 @@ export default function MultiTrackerWithLockOn({
     }
     
     requestRef.current = requestAnimationFrame(runTracking);
-  }, [isInitialized, isRunning, trackerStates, glowSize, onPoseDetected, lockOnEnabled, simpleLockState]);
+  }, [isInitialized, isRunning, trackerStates, glowSize, onPoseDetected, lockOnSystemEnabled, simpleLockState]);
 
   useEffect(() => {
     if (isInitialized && isRunning && !requestRef.current) {
@@ -771,9 +774,9 @@ export default function MultiTrackerWithLockOn({
     console.log('🖼️ currentROI state changed:', {
       currentROI,
       simpleLockState,
-      lockOnEnabled
+      lockOnSystemEnabled
     });
-  }, [currentROI, simpleLockState, lockOnEnabled]);
+  }, [currentROI, simpleLockState, lockOnSystemEnabled]);
 
   // 🔊 全身検出状態変化の監視と音声再生
   useEffect(() => {
@@ -800,6 +803,20 @@ export default function MultiTrackerWithLockOn({
     // 前回状態を更新
     setPreviousFullBodyVisible(isFullBodyVisible);
   }, [isFullBodyVisible]);
+
+  // 🎯 Poseトラッキング状態の監視
+  useEffect(() => {
+    if (!trackerStates.pose.detecting) {
+      // Poseがオフになった時にROIをクリアし、Lock-onシステムをリセット
+      console.log('🎯 Poseトラッキングオフ - ROIとLock-onシステムをリセット');
+      setCurrentROI(null);
+      setSimpleLockState('SEARCHING');
+      setGoodFrameCount(0);
+      setLostFrameCount(0);
+      setIsFullBodyVisible(false);
+      setPreviousFullBodyVisible(false);
+    }
+  }, [trackerStates.pose.detecting]);
 
   const handleTrackerChange = (name: keyof TrackerStates, type: 'enabled' | 'detecting', value: boolean) => {
     setTrackerStates(prev => ({
@@ -844,13 +861,13 @@ export default function MultiTrackerWithLockOn({
               {/* Lock-on overlay */}
               {(() => {
                 console.log('🔍 LockOnOverlay条件チェック:', {
-                  lockOnEnabled,
+                  lockOnSystemEnabled,
                   currentROI,
                   simpleLockState,
-                  shouldRender: lockOnEnabled
+                  shouldRender: lockOnSystemEnabled
                 });
                 
-                if (lockOnEnabled) {
+                if (lockOnSystemEnabled) {
                   console.log('✅ LockOnOverlayをレンダリング予定');
                   return (
                     <LockOnOverlay
@@ -864,7 +881,7 @@ export default function MultiTrackerWithLockOn({
                     />
                   );
                 } else {
-                  console.log('❌ lockOnEnabled=false のためLockOnOverlayをスキップ');
+                  console.log('❌ lockOnSystemEnabled=false のためLockOnOverlayをスキップ');
                   return null;
                 }
               })()}
@@ -872,48 +889,104 @@ export default function MultiTrackerWithLockOn({
           </Box>
         </Card>
 
-        {/* Lock-on controls */}
-        {lockOnEnabled && (
-          <Card sx={{
-            background: '#f5f7fa',
-            border: `1.5px solid ${green[500]}`,
-            boxShadow: `0 0 8px ${green[500]}22`,
-            borderRadius: 2,
-            p: 1.5,
-            width: width,
-            mb: 1
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <GpsFixed sx={{ color: green[500] }} />
-                <Typography variant="subtitle2" sx={{ color: green[500], fontWeight: 700, fontFamily: 'Orbitron, sans-serif' }}>
-                  Lock-On System
-                </Typography>
-              </Box>
-              <Typography variant="body2" sx={{ 
-                color: simpleLockState === 'LOCKED' ? green[600] : 
-                       simpleLockState === 'LOST' ? 'red' : 
-                       simpleLockState === 'LOCKING' ? 'orange' : 'gray',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}>
-                {simpleLockState}
+        {/* Integrated Lock-on System */}
+        <Card sx={{
+          background: '#f5f7fa',
+          border: `1.5px solid ${lockOnSystemEnabled ? green[500] : 'gray'}`,
+          boxShadow: `0 0 8px ${lockOnSystemEnabled ? green[500] : 'gray'}22`,
+          borderRadius: 2,
+          p: 1.5,
+          width: width,
+          mb: 1
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <GpsFixed sx={{ color: lockOnSystemEnabled ? green[500] : 'gray' }} />
+              <Typography variant="subtitle2" sx={{ color: lockOnSystemEnabled ? green[500] : 'gray', fontWeight: 700, fontFamily: 'Orbitron, sans-serif' }}>
+                Lock-On System
               </Typography>
             </Box>
+            <Typography variant="body2" sx={{ 
+              color: lockOnSystemEnabled ? 
+                (simpleLockState === 'LOCKED' ? green[600] : 
+                 simpleLockState === 'LOST' ? 'red' : 
+                 simpleLockState === 'LOCKING' ? 'orange' : green[600]) 
+                : 'gray',
+              fontWeight: 600,
+              fontSize: '0.9rem'
+            }}>
+              {lockOnSystemEnabled ? 
+                (simpleLockState === 'LOCKED' ? 'LOCKED' : 
+                 simpleLockState === 'LOST' ? 'LOST' : 
+                 simpleLockState === 'LOCKING' ? 'LOCKING...' : 'SEARCHING') 
+                : 'DISABLED'}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
-              variant="outlined"
+              variant={lockOnSystemEnabled ? "contained" : "outlined"}
               size="small"
-              onClick={handleReacquireTarget}
+              onClick={() => {
+                setLockOnSystemEnabled(true);
+                console.log('🎯 Lock-onシステム有効化');
+              }}
               sx={{ 
                 borderColor: green[500], 
-                color: green[500],
-                '&:hover': { borderColor: green[600], backgroundColor: green[50] }
+                color: lockOnSystemEnabled ? 'white' : green[500],
+                backgroundColor: lockOnSystemEnabled ? green[500] : 'transparent',
+                '&:hover': { 
+                  borderColor: green[600], 
+                  backgroundColor: lockOnSystemEnabled ? green[600] : green[50] 
+                }
               }}
             >
-              Reacquire Target
+              Enable
             </Button>
-          </Card>
-        )}
+            <Button
+              variant={!lockOnSystemEnabled ? "contained" : "outlined"}
+              size="small"
+              onClick={() => {
+                setLockOnSystemEnabled(false);
+                console.log('🎯 Lock-onシステム無効化');
+                // システム無効化時にROIをクリア
+                setCurrentROI(null);
+                setSimpleLockState('SEARCHING');
+                setGoodFrameCount(0);
+                setLostFrameCount(0);
+                setIsFullBodyVisible(false);
+                setPreviousFullBodyVisible(false);
+              }}
+              sx={{ 
+                borderColor: 'gray', 
+                color: !lockOnSystemEnabled ? 'white' : 'gray',
+                backgroundColor: !lockOnSystemEnabled ? 'gray' : 'transparent',
+                '&:hover': { 
+                  borderColor: '#666', 
+                  backgroundColor: !lockOnSystemEnabled ? '#666' : '#f5f5f5' 
+                }
+              }}
+            >
+              Disable
+            </Button>
+          </Box>
+          {lockOnSystemEnabled && (
+            <Box sx={{ mt: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleReacquireTarget}
+                fullWidth
+                sx={{ 
+                  borderColor: green[500], 
+                  color: green[500],
+                  '&:hover': { borderColor: green[600], backgroundColor: green[50] }
+                }}
+              >
+                Reacquire Target
+              </Button>
+            </Box>
+          )}
+        </Card>
 
         {/* MediaPipe tracker controls */}
         <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, width: width }}>
