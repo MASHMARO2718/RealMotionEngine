@@ -48,26 +48,12 @@ interface CircularAngleProps {
 }
 
 function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
-  // 関節ごとの実際の可動域を定義
-  const getJointRange = (jointName: string) => {
-    const ranges = {
-      'Left Elbow': { min: 0, max: 150 },    // 肘：伸展0度〜屈曲150度
-      'Right Elbow': { min: 0, max: 150 },
-      'Left Shoulder': { min: 30, max: 180 }, // 肩：様々な動き
-      'Right Shoulder': { min: 30, max: 180 },
-      'Left Knee': { min: 90, max: 180 },    // 膝：屈曲90度〜伸展180度
-      'Right Knee': { min: 90, max: 180 },
-      'Left Hip': { min: 90, max: 180 },     // 股関節
-      'Right Hip': { min: 90, max: 180 },
-    };
-    return ranges[jointName as keyof typeof ranges] || { min: 0, max: 180 };
-  };
-
-  const jointRange = getJointRange(name);
+  // すべてのグラフを0~180度で統一表示
+  const jointRange = { min: 0, max: 180 };
   
-  // 角度を関節の可動域内での割合に変換（0-100%）
+  // 角度を0-180度の範囲での割合に変換（0-100%）
   const normalizedAngle = Math.max(0, Math.min(100, 
-    ((angle - jointRange.min) / (jointRange.max - jointRange.min)) * 100
+    (angle / 180) * 100
   ));
   
   // 半円表示のため、180度を100%とする
@@ -96,15 +82,15 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
       alignItems: 'center',
       gap: 1,
       width: '100%',
-      height: size / 2 + 20,
+      height: size / 2 + 30, // 角度表示分のスペースを確保
       px: 1
     }}>
       {/* 半円グラフコンテナ */}
       <Box sx={{ 
         position: 'relative',
         width: size,
-        height: size / 2 + 10, // 少し余裕を増やす
-        overflow: 'hidden',
+        height: size / 2 + 15, // 角度表示のためさらに余裕を追加
+        overflow: 'visible', // 角度表示が見えるようにvisibleに変更
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -113,10 +99,10 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
         {/* 背景の半円 - 回転してから配置 */}
         <Box sx={{
           position: 'absolute',
-          top: 0, // 上部クリッピングを防ぐため0に変更
+          top: 0,
           left: 0,
           transform: 'rotate(-90deg)',
-          transformOrigin: `${size/2}px ${size/2}px` // 明確に中心点を指定
+          transformOrigin: `${size/2}px ${size/2}px`
         }}>
           <CircularProgress
             variant="determinate"
@@ -135,10 +121,10 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
         {/* 角度を表す半円 - 回転してから配置 */}
         <Box sx={{
           position: 'absolute',
-          top: 0, // 上部クリッピングを防ぐため0に変更
+          top: 0,
           left: 0,
           transform: 'rotate(-90deg)',
-          transformOrigin: `${size/2}px ${size/2}px` // 明確に中心点を指定
+          transformOrigin: `${size/2}px ${size/2}px`
         }}>
           <CircularProgress
             variant="determinate"
@@ -155,20 +141,23 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
           />
         </Box>
 
-        {/* 中央の角度表示 */}
+        {/* 中央の角度表示 - コンテナ外に配置 */}
         <Box sx={{
           position: 'absolute',
-          top: size * 0.4, // 半円の中央部分に調整
+          top: size / 2 + 5, // コンテナの下側に配置
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 10
+          zIndex: 10,
+          background: 'rgba(255,255,255,0.9)',
+          borderRadius: '4px',
+          px: 0.5,
+          py: 0.2
         }}>
           <Typography variant="caption" sx={{ 
             fontSize: '0.75rem', 
             fontWeight: 'bold',
             color: color,
-            lineHeight: 1,
-            textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            lineHeight: 1
           }}>
             {angle.toFixed(0)}°
           </Typography>
@@ -364,7 +353,7 @@ export default function JointAngleAnalyzer({
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr',
-              gap: 1.2,
+              gap: 1.8, // 間隔を少し広げる
               justifyItems: 'center',
               px: 1.5
             }}>
@@ -394,7 +383,7 @@ export default function JointAngleAnalyzer({
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr',
-              gap: 1.2,
+              gap: 1.8, // 間隔を少し広げる
               justifyItems: 'center',
               px: 1.5
             }}>
