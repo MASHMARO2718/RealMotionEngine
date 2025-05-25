@@ -340,9 +340,20 @@ export default function JointAngleAnalyzer({
       </Card>
 
       {jointAngles.length > 0 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-          {/* 腕の関節 */}
-          <Card sx={{ p: 1.2, borderRadius: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'row', // 横並びに変更
+          gap: 2, 
+          flexGrow: 1,
+          width: '100%'
+        }}>
+          {/* 腕の関節 - 左側 */}
+          <Card sx={{ 
+            p: 1.2, 
+            borderRadius: 2,
+            flex: 1, // 50%幅
+            minWidth: 0 // flex shrinkを許可
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <TrendingUp sx={{ color: green[500], fontSize: '1rem' }} />
               <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
@@ -353,7 +364,7 @@ export default function JointAngleAnalyzer({
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr',
-              gap: 1.8, // 間隔を少し広げる
+              gap: 1.8,
               justifyItems: 'center',
               px: 1.5
             }}>
@@ -371,8 +382,13 @@ export default function JointAngleAnalyzer({
             </Box>
           </Card>
 
-          {/* 脚の関節 */}
-          <Card sx={{ p: 1.2, borderRadius: 2, flexGrow: 1 }}>
+          {/* 脚の関節 - 右側 */}
+          <Card sx={{ 
+            p: 1.2, 
+            borderRadius: 2, 
+            flex: 1, // 50%幅
+            minWidth: 0 // flex shrinkを許可
+          }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <TrendingUp sx={{ color: blue[500], fontSize: '1rem' }} />
               <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
@@ -383,7 +399,7 @@ export default function JointAngleAnalyzer({
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr',
-              gap: 1.8, // 間隔を少し広げる
+              gap: 1.8,
               justifyItems: 'center',
               px: 1.5
             }}>
