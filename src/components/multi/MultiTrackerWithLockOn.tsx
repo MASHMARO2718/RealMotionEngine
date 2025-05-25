@@ -78,6 +78,16 @@ export default function MultiTrackerWithLockOn({
   onPoseDetected,
   lockOnEnabled = true
 }: MultiTrackerWithLockOnProps) {
+  
+  // 🔍 デバッグ：props状態を詳しく確認
+  console.log('🚀 MultiTrackerWithLockOn初期化:', {
+    width,
+    height,
+    glowSize,
+    lockOnEnabled,
+    onPoseDetected: !!onPoseDetected
+  });
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -113,32 +123,65 @@ export default function MultiTrackerWithLockOn({
   const [goodFrameCount, setGoodFrameCount] = useState(0);
   const [lostFrameCount, setLostFrameCount] = useState(0);
   const [currentROI, setCurrentROI] = useState<{x: number, y: number, width: number, height: number} | null>(null);
+  
+  // 🔧 強制再レンダリング用のカウンター
+  const [forceRenderCounter, setForceRenderCounter] = useState(0);
 
   // Simple rectangle tracking using shoulder and foot landmarks
   const createSimpleTrackingROI = (result: PoseLandmarkerResult, canvasWidth: number, canvasHeight: number) => {
-    if (!result.landmarks || result.landmarks.length === 0) return null;
+    console.log('🔧 createSimpleTrackingROI called:', {
+      hasResult: !!result,
+      hasLandmarks: !!(result && result.landmarks),
+      landmarkCount: result?.landmarks?.length || 0,
+      canvasSize: { width: canvasWidth, height: canvasHeight }
+    });
+    
+    if (!result.landmarks || result.landmarks.length === 0) {
+      console.log('❌ No landmarks found');
+      return null;
+    }
     
     const landmarks = result.landmarks[0];
+    console.log('📍 Landmarks found:', landmarks.length);
     
     // MediaPipe landmark indices
     const LEFT_SHOULDER = 11;
     const RIGHT_SHOULDER = 12;
+    const LEFT_HIP = 23;
+    const RIGHT_HIP = 24;
     const LEFT_FOOT = 31;  // left foot index
     const RIGHT_FOOT = 32; // right foot index
     const NOSE = 0; // for head reference
     
-    // Check if required landmarks are visible
-    const requiredLandmarks = [LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_FOOT, RIGHT_FOOT];
-    const visibleLandmarks = requiredLandmarks.filter(index => {
+    // 🔧 更に緩い条件：肩、腰、足のいずれかが見えればOK
+    const allLandmarks = [LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP, LEFT_FOOT, RIGHT_FOOT];
+    const visibleLandmarks = allLandmarks.filter(index => {
       const landmark = landmarks[index];
-      return landmark && (landmark.visibility === undefined || landmark.visibility > 0.3);
+      const isVisible = landmark && (landmark.visibility === undefined || landmark.visibility > 0.1);
+      console.log(`💡 Landmark ${index} visibility:`, {
+        exists: !!landmark,
+        visibility: landmark?.visibility,
+        isVisible
+      });
+      return isVisible;
     });
     
-    if (visibleLandmarks.length < 2) return null; // Need at least 2 points
+    console.log('👁️ Visible landmarks:', {
+      count: visibleLandmarks.length,
+      indices: visibleLandmarks,
+      required: 1
+    });
+    
+    if (visibleLandmarks.length < 1) {
+      console.log('❌ Not enough visible landmarks');
+      return null;
+    }
     
     // Get landmark coordinates (normalized 0-1)
     const leftShoulder = landmarks[LEFT_SHOULDER];
     const rightShoulder = landmarks[RIGHT_SHOULDER];
+    const leftHip = landmarks[LEFT_HIP];
+    const rightHip = landmarks[RIGHT_HIP];
     const leftFoot = landmarks[LEFT_FOOT];
     const rightFoot = landmarks[RIGHT_FOOT];
     const nose = landmarks[NOSE];
@@ -152,41 +195,99 @@ export default function MultiTrackerWithLockOn({
     // Collect all valid points
     const points = [];
     
-    if (leftShoulder && (leftShoulder.visibility === undefined || leftShoulder.visibility > 0.3)) {
-      points.push({
+    // 肩
+    if (leftShoulder && (leftShoulder.visibility === undefined || leftShoulder.visibility > 0.1)) {
+      const point = {
         x: canvasWidth - (leftShoulder.x * canvasWidth), // Mirror X coordinate
         y: leftShoulder.y * canvasHeight
-      });
+      };
+      console.log('👍 Left shoulder point:', point);
+      points.push(point);
     }
     
-    if (rightShoulder && (rightShoulder.visibility === undefined || rightShoulder.visibility > 0.3)) {
-      points.push({
+    if (rightShoulder && (rightShoulder.visibility === undefined || rightShoulder.visibility > 0.1)) {
+      const point = {
         x: canvasWidth - (rightShoulder.x * canvasWidth), // Mirror X coordinate
         y: rightShoulder.y * canvasHeight
-      });
+      };
+      console.log('👍 Right shoulder point:', point);
+      points.push(point);
     }
     
-    if (leftFoot && (leftFoot.visibility === undefined || leftFoot.visibility > 0.3)) {
-      points.push({
+    // 腰
+    if (leftHip && (leftHip.visibility === undefined || leftHip.visibility > 0.1)) {
+      const point = {
+        x: canvasWidth - (leftHip.x * canvasWidth), // Mirror X coordinate
+        y: leftHip.y * canvasHeight
+      };
+      console.log('👍 Left hip point:', point);
+      points.push(point);
+    }
+    
+    if (rightHip && (rightHip.visibility === undefined || rightHip.visibility > 0.1)) {
+      const point = {
+        x: canvasWidth - (rightHip.x * canvasWidth), // Mirror X coordinate
+        y: rightHip.y * canvasHeight
+      };
+      console.log('👍 Right hip point:', point);
+      points.push(point);
+    }
+    
+    // 足
+    if (leftFoot && (leftFoot.visibility === undefined || leftFoot.visibility > 0.1)) {
+      const point = {
         x: canvasWidth - (leftFoot.x * canvasWidth), // Mirror X coordinate
         y: leftFoot.y * canvasHeight
-      });
+      };
+      console.log('👍 Left foot point:', point);
+      points.push(point);
     }
     
-    if (rightFoot && (rightFoot.visibility === undefined || rightFoot.visibility > 0.3)) {
-      points.push({
+    if (rightFoot && (rightFoot.visibility === undefined || rightFoot.visibility > 0.1)) {
+      const point = {
         x: canvasWidth - (rightFoot.x * canvasWidth), // Mirror X coordinate
         y: rightFoot.y * canvasHeight
-      });
+      };
+      console.log('👍 Right foot point:', point);
+      points.push(point);
     }
     
-    if (points.length < 2) return null;
+    console.log('📊 Valid points collected:', {
+      count: points.length,
+      points: points
+    });
     
-    // Calculate bounding box from all visible points
-    const minX = Math.min(...points.map(p => p.x)) - horizontalPadding;
-    const maxX = Math.max(...points.map(p => p.x)) + horizontalPadding;
-    const minY = Math.min(...points.map(p => p.y)) - (nose && (nose.visibility === undefined || nose.visibility > 0.3) ? headPadding : 0);
-    const maxY = Math.max(...points.map(p => p.y)) + verticalPadding;
+    // 🔧 1つのポイントでもROIを生成（デフォルトサイズ使用）
+    if (points.length === 0) {
+      console.log('❌ No valid points found');
+      return null;
+    }
+    
+    let minX, maxX, minY, maxY;
+    
+    if (points.length === 1) {
+      console.log('🎯 Single point ROI generation');
+      // 1つのポイントのみの場合、デフォルトサイズのROIを生成
+      const point = points[0];
+      const defaultWidth = canvasWidth * 0.3; // キャンバス幅の30%
+      const defaultHeight = canvasHeight * 0.4; // キャンバス高さの40%
+      
+      minX = point.x - defaultWidth / 2;
+      maxX = point.x + defaultWidth / 2;
+      minY = point.y - defaultHeight / 3; // 上に余裕を持たせる
+      maxY = point.y + defaultHeight * 2 / 3; // 下に多めに
+      
+      console.log('📦 Single point bounds:', { minX, maxX, minY, maxY });
+    } else {
+      console.log('🎯 Multi-point ROI generation');
+      // 複数のポイントの場合、通常の境界ボックス計算
+      minX = Math.min(...points.map(p => p.x)) - horizontalPadding;
+      maxX = Math.max(...points.map(p => p.x)) + horizontalPadding;
+      minY = Math.min(...points.map(p => p.y)) - (nose && (nose.visibility === undefined || nose.visibility > 0.1) ? headPadding : verticalPadding);
+      maxY = Math.max(...points.map(p => p.y)) + verticalPadding;
+      
+      console.log('📦 Multi-point bounds:', { minX, maxX, minY, maxY });
+    }
     
     // Ensure bounds are within canvas
     const clampedMinX = Math.max(0, minX);
@@ -194,12 +295,15 @@ export default function MultiTrackerWithLockOn({
     const clampedMinY = Math.max(0, minY);
     const clampedMaxY = Math.min(canvasHeight, maxY);
     
-    return {
+    const finalROI = {
       x: clampedMinX,
       y: clampedMinY,
       width: clampedMaxX - clampedMinX,
       height: clampedMaxY - clampedMinY
     };
+    
+    console.log('🎯 Final ROI:', finalROI);
+    return finalROI;
   };
 
   // Audio feedback functions
@@ -335,6 +439,15 @@ export default function MultiTrackerWithLockOn({
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
     }
+    
+    // 🔍 デバッグ：トラッカー状態をログ出力
+    console.log('🎥 Frame processing:', {
+      timestamp: Math.floor(timestamp),
+      trackerStates: trackerStates,
+      canvasSize: { width: canvas.width, height: canvas.height },
+      videoSize: { width: video.videoWidth, height: video.videoHeight }
+    });
+    
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.translate(canvas.width, 0);
@@ -344,32 +457,72 @@ export default function MultiTrackerWithLockOn({
 
     // Only run MediaPipe tracking if lock-on is not active or not enabled
     // Always run MediaPipe for visual feedback
+    console.log('🔍 Checking pose detection state:', {
+      detecting: trackerStates.pose.detecting,
+      enabled: trackerStates.pose.enabled
+    });
+    
     if (trackerStates.pose.detecting) {
       detectPoseLandmarks(video, Math.floor(timestamp)).then(result => {
+        // 🔍 詳細デバッグ：検出結果をログ出力
+        console.log('🔍 Pose Detection Result:', {
+          hasResult: !!result,
+          hasLandmarks: !!(result && result.landmarks && result.landmarks.length > 0),
+          landmarkCount: result?.landmarks?.length || 0,
+          timestamp: Math.floor(timestamp)
+        });
+        
         if (result && result.landmarks && result.landmarks.length > 0) {
+          console.log('✅ ポーズ検出成功 - ランドマーク数:', result.landmarks[0].length);
+          
           if (trackerStates.pose.enabled) {
             // Use white color for pose landmarks when locked
             const useWhiteColor = lockOnEnabled && simpleLockState === 'LOCKED';
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize, useWhiteColor);
           }
           
-          // Simple lock-on logic
+          // 🔧 ROI自動追従：ポーズが検出されたら常にROIを更新
+          const roi = createSimpleTrackingROI(result, canvas.width, canvas.height);
+          console.log('🎯 ROI計算結果:', {
+            hasROI: !!roi,
+            roi: roi,
+            canvasSize: { width: canvas.width, height: canvas.height },
+            previousROI: currentROI
+          });
+          
+          if (roi) {
+            console.log('📦 ROI更新前:', { 
+              old: currentROI, 
+              new: roi,
+              changed: JSON.stringify(currentROI) !== JSON.stringify(roi)
+            });
+            setCurrentROI({...roi});
+            setForceRenderCounter(prev => prev + 1);
+            console.log('📦 ROI更新後: setCurrentROI呼び出し完了');
+          } else {
+            console.log('❌ ROI生成失敗');
+          }
+          
+          // Simple lock-on logic (ROIとは独立)
           if (lockOnEnabled) {
             const isPoseValid = validatePoseForLock(result);
+            console.log('🔒 Lock-on判定:', {
+              isPoseValid,
+              simpleLockState,
+              goodFrameCount,
+              lostFrameCount
+            });
             
-            // Update ROI when we have a valid pose for locking
             if (isPoseValid) {
-              const roi = createSimpleTrackingROI(result, canvas.width, canvas.height);
-              if (roi) {
-                setCurrentROI(roi);
-              }
-              
               setGoodFrameCount(prev => {
                 const newCount = prev + 1;
+                console.log('✅ Good frame count:', newCount);
                 // Reduced from 2 to 1 frame for faster locking
                 if (newCount >= 1 && simpleLockState === 'SEARCHING') {
+                  console.log('🔄 状態変更: SEARCHING → LOCKING');
                   setSimpleLockState('LOCKING');
                   setTimeout(() => {
+                    console.log('🔒 状態変更: LOCKING → LOCKED');
                     setSimpleLockState('LOCKED');
                     // Play lock beep
                     playLockBeep();
@@ -379,18 +532,21 @@ export default function MultiTrackerWithLockOn({
               });
               setLostFrameCount(0);
             } else {
-              // Keep ROI visible even when pose is not valid for locking
+              // Lock-on条件に満たないが、ROIは継続表示
               setGoodFrameCount(0);
               setLostFrameCount(prev => {
                 const newCount = prev + 1;
+                console.log('❌ Lost frame count:', newCount);
                 // Reduced from 10 to 5 frames for faster lost detection
                 if (newCount >= 5 && simpleLockState === 'LOCKED') {
+                  console.log('🔄 状態変更: LOCKED → LOST');
                   setSimpleLockState('LOST');
                   // Play lost boops
                   playLostBoops();
                   setTimeout(() => {
+                    console.log('🔄 状態変更: LOST → SEARCHING');
                     setSimpleLockState('SEARCHING');
-                    // Don't clear ROI - keep it visible
+                    // ROIはクリアしない - 継続表示
                   }, 2000); // Reduced from 3000ms
                 }
                 return newCount;
@@ -402,20 +558,30 @@ export default function MultiTrackerWithLockOn({
           if (onPoseDetected) {
             onPoseDetected(result);
           }
-        } else if (lockOnEnabled) {
-          // No pose detected
-          setGoodFrameCount(0);
-          setLostFrameCount(prev => {
-            const newCount = prev + 1;
-            if (newCount >= 10 && simpleLockState === 'LOCKED') {
-              setSimpleLockState('LOST');
-              playLostBoops();
-              setTimeout(() => setSimpleLockState('SEARCHING'), 3000);
-            }
-            return newCount;
-          });
+        } else {
+          console.log('❌ ポーズ検出失敗またはランドマークなし');
+          
+          if (lockOnEnabled) {
+            // No pose detected - ROIをクリア
+            console.log('🗑️ ROIをクリア (ポーズ検出失敗)');
+            setCurrentROI(null);
+            setGoodFrameCount(0);
+            setLostFrameCount(prev => {
+              const newCount = prev + 1;
+              if (newCount >= 10 && simpleLockState === 'LOCKED') {
+                setSimpleLockState('LOST');
+                playLostBoops();
+                setTimeout(() => setSimpleLockState('SEARCHING'), 3000);
+              }
+              return newCount;
+            });
+          }
         }
+      }).catch(error => {
+        console.error('💥 Pose detection error:', error);
       });
+    } else {
+      console.log('⏸️ Pose detection disabled');
     }
     
     if (trackerStates.hand.detecting) {
@@ -470,6 +636,15 @@ export default function MultiTrackerWithLockOn({
     };
   }, [isInitialized, isRunning, runTracking]);
 
+  // 🔍 デバッグ：ROI状態の監視
+  useEffect(() => {
+    console.log('🖼️ currentROI state changed:', {
+      currentROI,
+      simpleLockState,
+      lockOnEnabled
+    });
+  }, [currentROI, simpleLockState, lockOnEnabled]);
+
   const handleTrackerChange = (name: keyof TrackerStates, type: 'enabled' | 'detecting', value: boolean) => {
     setTrackerStates(prev => ({
       ...prev,
@@ -511,15 +686,31 @@ export default function MultiTrackerWithLockOn({
               />
               
               {/* Lock-on overlay */}
-              {lockOnEnabled && (
-                <LockOnOverlay
-                  roi={currentROI}
-                  state={simpleLockState}
-                  width={width}
-                  height={height}
-                  className="absolute top-0 left-0"
-                />
-              )}
+              {(() => {
+                console.log('🔍 LockOnOverlay条件チェック:', {
+                  lockOnEnabled,
+                  currentROI,
+                  simpleLockState,
+                  shouldRender: lockOnEnabled
+                });
+                
+                if (lockOnEnabled) {
+                  console.log('✅ LockOnOverlayをレンダリング予定');
+                  return (
+                    <LockOnOverlay
+                      roi={currentROI}
+                      state={simpleLockState}
+                      width={width}
+                      height={height}
+                      className="absolute top-0 left-0"
+                      key={forceRenderCounter}
+                    />
+                  );
+                } else {
+                  console.log('❌ lockOnEnabled=false のためLockOnOverlayをスキップ');
+                  return null;
+                }
+              })()}
             </Box>
           </Box>
         </Card>

@@ -55,6 +55,15 @@ export default function LockOnOverlay({
   const overlayRef = useRef<HTMLDivElement>(null);
   const style = stateStyles[state];
 
+  // 🔍 デバッグ：LockOnOverlay の状態をログ出力
+  console.log('🖼️ LockOnOverlay render:', {
+    roi,
+    state,
+    width,
+    height,
+    hasROI: !!roi
+  });
+
   useEffect(() => {
     // Add custom blink animation for LOST state if not already defined
     if (state === 'LOST') {
@@ -77,8 +86,11 @@ export default function LockOnOverlay({
   }, [state]);
 
   if (!roi) {
+    console.log('❌ LockOnOverlay: ROI is null, not rendering');
     return null;
   }
+
+  console.log('✅ LockOnOverlay: Rendering with ROI:', roi);
 
   return (
     <div
@@ -104,8 +116,11 @@ export default function LockOnOverlay({
           top: `${(roi.y / height) * 100}%`,
           width: `${(roi.width / width) * 100}%`,
           height: `${(roi.height / height) * 100}%`,
-          borderColor: state === 'LOST' ? '#ef4444' : '#ffffff', // Force white border
-          boxShadow: `0 0 20px ${getGlowColor(state)}`
+          borderColor: state === 'LOST' ? '#ef4444' : '#00ff00', // 🟢 緑色で見やすく
+          borderWidth: '3px', // 🟢 適度な太さ
+          backgroundColor: state === 'LOCKED' ? 'rgba(0, 255, 0, 0.1)' : 'transparent', // 🟢 薄い緑の背景
+          boxShadow: `0 0 15px ${state === 'LOST' ? '#ef4444' : '#00ff00'}`, // 🟢 緑のグロー
+          zIndex: 10 // 🟢 適切な前面表示
         }}
       >
         {/* Corner indicators */}
@@ -117,8 +132,8 @@ export default function LockOnOverlay({
               ${getCornerClasses(corner)}
             `}
             style={{
-              borderColor: state === 'LOST' ? '#ef4444' : '#ffffff', // Force white border
-              boxShadow: `0 0 8px ${getGlowColor(state)}`
+              borderColor: state === 'LOST' ? '#ef4444' : '#00ff00', // 🟢 緑色に統一
+              boxShadow: `0 0 8px ${state === 'LOST' ? '#ef4444' : '#00ff00'}`
             }}
           />
         ))}
@@ -149,26 +164,26 @@ export default function LockOnOverlay({
       </div>
 
       {/* Crosshair for center targeting - always visible when ROI exists */}
-      {(
-        <div
-          className="absolute pointer-events-none"
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: `${((roi.x + roi.width / 2) / width) * 100}%`,
+          top: `${((roi.y + roi.height / 2) / height) * 100}%`,
+          transform: 'translate(-50%, -50%)'
+        }}
+      >
+        <div 
+          className={`w-8 h-8 border-2 rounded-full ${style.animation}`}
           style={{
-            left: `${((roi.x + roi.width / 2) / width) * 100}%`,
-            top: `${((roi.y + roi.height / 2) / height) * 100}%`,
-            transform: 'translate(-50%, -50%)'
+            borderColor: state === 'LOST' ? '#ef4444' : '#00ff00' // 🟢 緑色に統一
           }}
         >
-          <div 
-            className={`w-8 h-8 border-2 rounded-full ${style.animation}`}
-            style={{
-              borderColor: '#ffffff' // Force white border
-            }}
-          >
-            <div className={`absolute top-1/2 left-1/2 w-4 h-0.5 bg-white transform -translate-x-1/2 -translate-y-1/2`} />
-            <div className={`absolute top-1/2 left-1/2 w-0.5 h-4 bg-white transform -translate-x-1/2 -translate-y-1/2`} />
-          </div>
+          <div className={`absolute top-1/2 left-1/2 w-4 h-0.5 transform -translate-x-1/2 -translate-y-1/2`} 
+               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : '#00ff00' }} />
+          <div className={`absolute top-1/2 left-1/2 w-0.5 h-4 transform -translate-x-1/2 -translate-y-1/2`} 
+               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : '#00ff00' }} />
         </div>
-      )}
+      </div>
     </div>
   );
 }
