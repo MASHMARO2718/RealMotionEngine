@@ -4,11 +4,14 @@
  */
 
 import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
-import { DirectionsRun, Face, GpsFixed, SportsHandball } from '@mui/icons-material';
+import { DirectionsRun, Face, GpsFixed, RadioButtonChecked, SportsHandball, Videocam } from '@mui/icons-material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import { blue, cyan, green } from '@mui/material/colors';
+import { blue, cyan, green, orange } from '@mui/material/colors';
+import FormControl from '@mui/material/FormControl';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
@@ -99,6 +102,13 @@ export default function MultiTrackerWithLockOn({
     face: { enabled: true, detecting: true }
   });
   const requestRef = useRef<number | null>(null);
+
+  // 🎥 カメラ関連のstate
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+
+  // 🎯 関節角弧表示のstate
+  const [showJointAngles, setShowJointAngles] = useState<boolean>(true);
 
   // 🔧 強制再レンダリング用のカウンター
   const [forceRenderCounter, setForceRenderCounter] = useState(0);
@@ -470,9 +480,29 @@ export default function MultiTrackerWithLockOn({
   // Now using simplified logic directly in component instead of hook
   // const lockState = { lockState: simpleLockState, roi: currentROI };
 
+  // 🎥 利用可能なカメラデバイスを取得
+  const enumerateCameras = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      console.log('📷 利用可能なカメラ:', videoDevices);
+      setAvailableCameras(videoDevices);
+      
+      // デフォルトカメラを設定（最初のデバイスまたは既存の選択）
+      if (videoDevices.length > 0 && !selectedCameraId) {
+        setSelectedCameraId(videoDevices[0].deviceId);
+      }
+    } catch (error) {
+      console.error('カメラ列挙エラー:', error);
+    }
+  }, [selectedCameraId]);
+
   useEffect(() => {
     async function init() {
       try {
+        // カメラ列挙を先に実行
+        await enumerateCameras();
+        
         await initializeMediaPipePoseTracking();
         await initializeMediaPipeHandTracking();
         await initializeMediaPipeFaceTracking();
@@ -494,15 +524,33 @@ export default function MultiTrackerWithLockOn({
       disposeMediaPipeHandTracking();
       disposeMediaPipeFaceTracking();
     };
-  }, []);
+  }, [enumerateCameras]);
 
   const setupCamera = useCallback(async () => {
     if (!videoRef.current) return;
+    
     try {
-      const constraints = {
+      // 既存のストリームを停止
+      if (videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      
+      const constraints: MediaStreamConstraints = {
         audio: false,
-        video: { width: { ideal: width }, height: { ideal: height }, facingMode: 'user' }
+        video: {
+          width: { ideal: width },
+          height: { ideal: height },
+          // カメラが選択されている場合はdeviceIdを使用、そうでなければfacingModeを使用
+          ...(selectedCameraId 
+            ? { deviceId: { exact: selectedCameraId } }
+            : { facingMode: 'user' }
+          )
+        }
       };
+      
+      console.log('📷 カメラ制約:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       videoRef.current.srcObject = stream;
       videoRef.current.onloadedmetadata = () => {
@@ -516,8 +564,21 @@ export default function MultiTrackerWithLockOn({
       };
     } catch (err) {
       setError('Camera error: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('📷 カメラ初期化エラー:', err);
     }
-  }, [width, height]);
+  }, [width, height, selectedCameraId]);
+
+  // 🎥 カメラ切り替え関数
+  const switchCamera = useCallback(async (deviceId: string) => {
+    console.log('📷 カメラ切り替え:', deviceId);
+    setSelectedCameraId(deviceId);
+    setIsRunning(false);
+    
+    // 少し待ってからカメラを再初期化
+    setTimeout(async () => {
+      await setupCamera();
+    }, 100);
+  }, [setupCamera]);
 
   const runTracking = useCallback((timestamp: number) => {
     if (!isInitialized || !isRunning || !videoRef.current || !canvasRef.current) {
@@ -585,8 +646,10 @@ export default function MultiTrackerWithLockOn({
             const useWhiteColor = lockOnSystemEnabled && simpleLockState === 'LOCKED';
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize, useWhiteColor);
             
-            // 関節角度を描画
-            drawJointAngles(ctx, result, canvas.width, canvas.height);
+            // 関節角度を描画（showJointAnglesがtrueの場合のみ）
+            if (showJointAngles) {
+              drawJointAngles(ctx, result, canvas.width, canvas.height);
+            }
           }
           
           // 🔧 ROI自動追従：ポーズが検出されたら常にROIを更新
@@ -758,7 +821,7 @@ export default function MultiTrackerWithLockOn({
     }
     
     requestRef.current = requestAnimationFrame(runTracking);
-  }, [isInitialized, isRunning, trackerStates, glowSize, onPoseDetected, lockOnSystemEnabled, simpleLockState]);
+  }, [isInitialized, isRunning, trackerStates, glowSize, onPoseDetected, lockOnSystemEnabled, simpleLockState, showJointAngles]);
 
   useEffect(() => {
     if (isInitialized && isRunning && !requestRef.current) {
@@ -1124,20 +1187,125 @@ export default function MultiTrackerWithLockOn({
 
         {/* Lock-On System Container - 右半分に配置、左半分は新コンポーネント用に空ける */}
         <Box sx={{ display: 'flex', gap: 2, width: width, mb: 1 }}>
-          {/* 左半分: 新しいコンポーネント用スペース */}
-          <Box sx={{ 
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '80px', // Lock-On Systemと同じ高さを確保
-            border: '2px dashed #ddd',
-            borderRadius: 2,
-            color: '#999',
-            fontSize: '0.9rem'
-          }}>
-            {/* 新しいコンポーネント用の空きスペース */}
-            New Component Space
+          {/* 左半分: カメラ・表示設定コントロール */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {/* カメラ選択セクション */}
+            <Card sx={{
+              background: '#f5f7fa',
+              border: `1.5px solid ${blue[500]}`,
+              boxShadow: `0 0 8px ${blue[500]}22`,
+              borderRadius: 2,
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* ヘッダー部分 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Videocam sx={{ color: blue[500], fontSize: '1.2rem' }} />
+                <Typography variant="subtitle2" sx={{ 
+                  color: blue[500], 
+                  fontWeight: 700, 
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '0.85rem',
+                  flex: 1
+                }}>
+                  Camera Selection
+                </Typography>
+              </Box>
+
+              {/* カメラ選択ドロップダウン */}
+              <FormControl size="small" fullWidth>
+                <Select
+                  value={selectedCameraId}
+                  onChange={(e) => switchCamera(e.target.value)}
+                  sx={{ 
+                    fontSize: '0.8rem',
+                    '& .MuiSelect-select': { py: 0.5 }
+                  }}
+                  disabled={availableCameras.length === 0}
+                >
+                  {availableCameras.map((camera, index) => (
+                    <MenuItem key={camera.deviceId} value={camera.deviceId} sx={{ fontSize: '0.8rem' }}>
+                      {camera.label || `Camera ${index + 1}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Card>
+
+            {/* 関節角弧表示制御セクション */}
+            <Card sx={{
+              background: '#f5f7fa',
+              border: `1.5px solid ${orange[500]}`,
+              boxShadow: `0 0 8px ${orange[500]}22`,
+              borderRadius: 2,
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* ヘッダー部分 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <RadioButtonChecked sx={{ color: orange[500], fontSize: '1.2rem' }} />
+                <Typography variant="subtitle2" sx={{ 
+                  color: orange[500], 
+                  fontWeight: 700, 
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '0.85rem',
+                  flex: 1
+                }}>
+                  Joint Angles Display
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: showJointAngles ? green[600] : 'gray',
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}>
+                  {showJointAngles ? 'ON' : 'OFF'}
+                </Typography>
+              </Box>
+
+              {/* 関節角弧表示on/offボタン */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant={showJointAngles ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowJointAngles(true)}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: orange[500], 
+                    color: showJointAngles ? 'white' : orange[500],
+                    backgroundColor: showJointAngles ? orange[500] : 'transparent',
+                    '&:hover': { 
+                      borderColor: orange[600], 
+                      backgroundColor: showJointAngles ? orange[600] : orange[50] 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  SHOW
+                </Button>
+                <Button
+                  variant={!showJointAngles ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowJointAngles(false)}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: 'gray', 
+                    color: !showJointAngles ? 'white' : 'gray',
+                    backgroundColor: !showJointAngles ? 'gray' : 'transparent',
+                    '&:hover': { 
+                      borderColor: '#666', 
+                      backgroundColor: !showJointAngles ? '#666' : '#f5f5f5' 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  HIDE
+                </Button>
+              </Box>
+            </Card>
           </Box>
 
           {/* 右半分: Lock-On System (コンパクト版) */}
