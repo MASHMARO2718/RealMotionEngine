@@ -35,38 +35,55 @@ export default function MultiTrackingPage() {
         flexDirection: 'row', 
         p: 4, 
         pl: 12, 
-        width: 'max(100vw, 1600px)',
+        width: 'max(100vw, 1340px)',
         minHeight: 'calc(100vh - 32px)',
         alignItems: 'flex-start', 
         justifyContent: 'flex-start',
         gap: 4
       }}>
-        <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* 左側：カメラとトラッキング（コンパクト化） */}
+        <Box sx={{ width: 480, minWidth: 480, maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <MultiTrackerWithLockOn 
-            width={560} 
-            height={420} 
+            width={480} 
+            height={360} 
             onPoseDetected={setPoseData}
             lockOnEnabled={true}
           />
         </Box>
-        <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        
+        {/* 右側：3Dモデルビューとデータ分析（拡大） */}
+        <Box sx={{ width: 680, minWidth: 680, maxWidth: 680, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          {/* 3Dモデルビュー */}
           <ModelViewer 
-            width={560} 
+            width={680} 
             height={420} 
             poseData={poseData}
           />
-        </Box>
-        <Box sx={{ width: 480, minWidth: 480, maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <BodyDataAnalyzer 
-            poseData={poseData}
-            width={480} 
-            height={580} 
-          />
-          <JointAngleAnalyzer 
-            poseData={poseData}
-            width={480} 
-            height={320} 
-          />
+          
+          {/* データ分析コンポーネント群 */}
+          <Box sx={{ 
+            width: '100%', 
+            display: 'flex', 
+            flexDirection: 'row', 
+            gap: 2,
+            flexWrap: 'nowrap',
+            alignItems: 'flex-start'
+          }}>
+            <Box sx={{ width: 330, minWidth: 330 }}>
+              <JointAngleAnalyzer 
+                poseData={poseData}
+                width={330} 
+                height={500} 
+              />
+            </Box>
+            <Box sx={{ width: 300, minWidth: 300 }}>
+              <BodyDataAnalyzer 
+                poseData={poseData}
+                width={300} 
+                height={450} 
+              />
+            </Box>
+          </Box>
         </Box>
       </Box>
     </Box>
