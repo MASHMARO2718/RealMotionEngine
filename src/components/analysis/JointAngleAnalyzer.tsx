@@ -51,13 +51,9 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
   // すべてのグラフを0~180度で統一表示
   const jointRange = { min: 0, max: 180 };
   
-  // 角度を0-180度の範囲での割合に変換（0-100%）
-  const normalizedAngle = Math.max(0, Math.min(100, 
-    (angle / 180) * 100
-  ));
-  
-  // 半円表示のため、180度を100%とする
-  const progressValue = (normalizedAngle / 100) * 50; // 50%が最大（180度）
+  // 角度を正しく0-50%にマッピング（CircularProgressは0-100%で完全円）
+  // 0度 → 0%, 90度 → 25%, 180度 → 50%
+  const progressValue = Math.max(0, Math.min(50, (angle / 180) * 50));
   
   // 角度に基づく色の決定
   const getAngleColor = (angle: number, type: 'arm' | 'leg') => {
@@ -102,7 +98,8 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
           top: 0,
           left: 0,
           transform: 'rotate(-90deg)',
-          transformOrigin: `${size/2}px ${size/2}px`
+          transformOrigin: `${size/2}px ${size/2}px`,
+          zIndex: 1 // 背景は後ろに
         }}>
           <CircularProgress
             variant="determinate"
@@ -124,18 +121,21 @@ function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
           top: 0,
           left: 0,
           transform: 'rotate(-90deg)',
-          transformOrigin: `${size/2}px ${size/2}px`
+          transformOrigin: `${size/2}px ${size/2}px`,
+          zIndex: 2 // 前面に表示
         }}>
           <CircularProgress
+            key={`${name}-${angle}`} // 強制的な再レンダリング
             variant="determinate"
             value={progressValue}
             size={size}
-            thickness={5}
+            thickness={6} // 少し太くして目立たせる
             sx={{
               color: color,
               '& .MuiCircularProgress-circle': {
                 strokeLinecap: 'round',
                 filter: `drop-shadow(0 0 3px ${color}40)`,
+                transition: 'stroke-dasharray 0.3s ease-in-out', // アニメーション追加
               },
             }}
           />
