@@ -152,15 +152,19 @@ export default function LockOnOverlay({
           className={`
             absolute -top-8 left-1/2 transform -translate-x-1/2
             px-3 py-1 rounded-full text-xs font-bold text-white
-            ${getStateBackgroundColor(state)}
+            bg-black bg-opacity-70
             ${style.animation}
           `}
+          style={{
+            color: 'white', // 確実に白色にする
+            textShadow: '0 1px 2px rgba(0,0,0,0.8)' // 影を追加して視認性向上
+          }}
         >
           {getStateLabel(state)}
         </div>
 
-        {/* Track ID indicator */}
-        {state === 'LOCKED' && (
+        {/* Track ID indicator - 削除してLOCKの重複を防ぐ */}
+        {/* {state === 'LOCKED' && (
           <div
             className="
               absolute -bottom-8 right-0
@@ -169,7 +173,7 @@ export default function LockOnOverlay({
           >
             LOCK
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Crosshair for center targeting - always visible when ROI exists */}
@@ -227,21 +231,6 @@ function getGlowColor(state: LockState): string {
       return 'rgba(239, 68, 68, 0.7)'; // red-500
     default:
       return 'rgba(255, 255, 255, 0.5)';
-  }
-}
-
-function getStateBackgroundColor(state: LockState): string {
-  switch (state) {
-    case 'SEARCHING':
-      return 'bg-gray-800';  // Dark background for white text
-    case 'LOCKING':
-      return 'bg-gray-900';  // Darker background for white text
-    case 'LOCKED':
-      return 'bg-black';     // Black background for white text
-    case 'LOST':
-      return 'bg-red-500';
-    default:
-      return 'bg-gray-800';
   }
 }
 
