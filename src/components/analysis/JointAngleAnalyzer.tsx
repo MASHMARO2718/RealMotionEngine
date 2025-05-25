@@ -31,6 +31,7 @@ interface JointAngle {
   angle: number;
   side: 'left' | 'right';
   type: 'arm' | 'leg';
+  isDetected: boolean;
 }
 
 interface JointAngleAnalyzerProps {
@@ -45,12 +46,110 @@ interface CircularAngleProps {
   type: 'arm' | 'leg';
   name: string;
   size?: number;
+  isDetected?: boolean;
 }
 
-function CircularAngle({ angle, type, name, size = 50 }: CircularAngleProps) {
+function CircularAngle({ angle, type, name, size = 50, isDetected = true }: CircularAngleProps) {
   // すべてのグラフを0~180度で統一表示
   const jointRange = { min: 0, max: 180 };
   
+  // 検出されていない場合の処理
+  if (!isDetected) {
+    return (
+      <Box sx={{ 
+        position: 'relative', 
+        display: 'flex', 
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 1,
+        width: '100%',
+        height: size / 2 + 30,
+        px: 1,
+        opacity: 0.5 // 薄く表示
+      }}>
+        {/* 灰色の半円グラフ */}
+        <Box sx={{ 
+          position: 'relative',
+          width: size,
+          height: size / 2 + 15,
+          overflow: 'visible',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: 'rotate(-90deg)',
+            transformOrigin: `${size/2}px ${size/2}px`,
+          }}>
+            <CircularProgress
+              variant="determinate"
+              value={50}
+              size={size}
+              thickness={5}
+              sx={{
+                color: '#ccc', // 灰色
+                '& .MuiCircularProgress-circle': {
+                  strokeLinecap: 'round',
+                },
+              }}
+            />
+          </Box>
+
+          {/* 一時停止アイコンと文字 */}
+          <Box sx={{
+            position: 'absolute',
+            top: size / 2 + 5,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: '4px',
+            px: 0.5,
+            py: 0.2
+          }}>
+            <Typography variant="caption" sx={{ 
+              fontSize: '0.65rem', 
+              fontWeight: 'bold',
+              color: '#999',
+              lineHeight: 1
+            }}>
+              --°
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* 関節名 - 灰色表示 */}
+        <Box sx={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          flexGrow: 1
+        }}>
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.7rem', 
+            color: '#999',
+            fontWeight: 600,
+            lineHeight: 1.2,
+            mb: 0.3
+          }}>
+            {name}
+          </Typography>
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.6rem', 
+            color: '#ccc',
+            lineHeight: 1
+          }}>
+            Detection paused
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
   // 角度を正しく0-50%にマッピング（CircularProgressは0-100%で完全円）
   // 0度 → 0%, 90度 → 25%, 180度 → 50%
   const progressValue = Math.max(0, Math.min(50, (angle / 180) * 50));
@@ -200,9 +299,16 @@ export default function JointAngleAnalyzer({
   const [jointAngles, setJointAngles] = useState<JointAngle[]>([]);
   const [isActive, setIsActive] = useState(false);
 
-  // 3点から角度を計算する関数
-  const calculateAngle = (p1: any, p2: any, p3: any): number => {
-    if (!p1 || !p2 || !p3) return 0;
+  // 3点から角度を計算する関数（検出状態も含む）
+  const calculateAngleWithDetection = (p1: any, p2: any, p3: any): { angle: number; isDetected: boolean } => {
+    // ランドマークの有効性をチェック
+    if (!p1 || !p2 || !p3) return { angle: 0, isDetected: false };
+    
+    // visibilityが低い場合は検出されていないと判定
+    const minVisibility = 0.5;
+    if (p1.visibility < minVisibility || p2.visibility < minVisibility || p3.visibility < minVisibility) {
+      return { angle: 0, isDetected: false };
+    }
     
     // ベクトル計算
     const vec1 = { x: p1.x - p2.x, y: p1.y - p2.y };
@@ -213,12 +319,14 @@ export default function JointAngleAnalyzer({
     const mag1 = Math.sqrt(vec1.x * vec1.x + vec1.y * vec1.y);
     const mag2 = Math.sqrt(vec2.x * vec2.x + vec2.y * vec2.y);
     
-    if (mag1 * mag2 === 0) return 0;
+    if (mag1 * mag2 === 0) return { angle: 0, isDetected: false };
     
     // 角度計算（ラジアンから度へ変換）
     const cosAngle = dot / (mag1 * mag2);
     const angleRad = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
-    return (angleRad * 180) / Math.PI;
+    const angle = (angleRad * 180) / Math.PI;
+    
+    return { angle, isDetected: true };
   };
 
   // 関節角度の計算
@@ -229,68 +337,68 @@ export default function JointAngleAnalyzer({
     const angles: JointAngle[] = [];
 
     // 左肘関節角度（肩-肘-手首）
-    const leftElbowAngle = calculateAngle(
+    const leftElbow = calculateAngleWithDetection(
       landmarks[LANDMARKS.LEFT_SHOULDER],
       landmarks[LANDMARKS.LEFT_ELBOW],
       landmarks[LANDMARKS.LEFT_WRIST]
     );
-    angles.push({ name: 'Left Elbow', angle: leftElbowAngle, side: 'left', type: 'arm' });
+    angles.push({ name: 'Left Elbow', angle: leftElbow.angle, side: 'left', type: 'arm', isDetected: leftElbow.isDetected });
 
     // 右肘関節角度（肩-肘-手首）
-    const rightElbowAngle = calculateAngle(
+    const rightElbow = calculateAngleWithDetection(
       landmarks[LANDMARKS.RIGHT_SHOULDER],
       landmarks[LANDMARKS.RIGHT_ELBOW],
       landmarks[LANDMARKS.RIGHT_WRIST]
     );
-    angles.push({ name: 'Right Elbow', angle: rightElbowAngle, side: 'right', type: 'arm' });
+    angles.push({ name: 'Right Elbow', angle: rightElbow.angle, side: 'right', type: 'arm', isDetected: rightElbow.isDetected });
 
     // 左肩関節角度（肘-肩-腰）
-    const leftShoulderAngle = calculateAngle(
+    const leftShoulder = calculateAngleWithDetection(
       landmarks[LANDMARKS.LEFT_ELBOW],
       landmarks[LANDMARKS.LEFT_SHOULDER],
       landmarks[LANDMARKS.LEFT_HIP]
     );
-    angles.push({ name: 'Left Shoulder', angle: leftShoulderAngle, side: 'left', type: 'arm' });
+    angles.push({ name: 'Left Shoulder', angle: leftShoulder.angle, side: 'left', type: 'arm', isDetected: leftShoulder.isDetected });
 
     // 右肩関節角度（肘-肩-腰）
-    const rightShoulderAngle = calculateAngle(
+    const rightShoulder = calculateAngleWithDetection(
       landmarks[LANDMARKS.RIGHT_ELBOW],
       landmarks[LANDMARKS.RIGHT_SHOULDER],
       landmarks[LANDMARKS.RIGHT_HIP]
     );
-    angles.push({ name: 'Right Shoulder', angle: rightShoulderAngle, side: 'right', type: 'arm' });
+    angles.push({ name: 'Right Shoulder', angle: rightShoulder.angle, side: 'right', type: 'arm', isDetected: rightShoulder.isDetected });
 
     // 左膝関節角度（腰-膝-足首）
-    const leftKneeAngle = calculateAngle(
+    const leftKnee = calculateAngleWithDetection(
       landmarks[LANDMARKS.LEFT_HIP],
       landmarks[LANDMARKS.LEFT_KNEE],
       landmarks[LANDMARKS.LEFT_ANKLE]
     );
-    angles.push({ name: 'Left Knee', angle: leftKneeAngle, side: 'left', type: 'leg' });
+    angles.push({ name: 'Left Knee', angle: leftKnee.angle, side: 'left', type: 'leg', isDetected: leftKnee.isDetected });
 
     // 右膝関節角度（腰-膝-足首）
-    const rightKneeAngle = calculateAngle(
+    const rightKnee = calculateAngleWithDetection(
       landmarks[LANDMARKS.RIGHT_HIP],
       landmarks[LANDMARKS.RIGHT_KNEE],
       landmarks[LANDMARKS.RIGHT_ANKLE]
     );
-    angles.push({ name: 'Right Knee', angle: rightKneeAngle, side: 'right', type: 'leg' });
+    angles.push({ name: 'Right Knee', angle: rightKnee.angle, side: 'right', type: 'leg', isDetected: rightKnee.isDetected });
 
     // 左股関節角度（肩-腰-膝）
-    const leftHipAngle = calculateAngle(
+    const leftHip = calculateAngleWithDetection(
       landmarks[LANDMARKS.LEFT_SHOULDER],
       landmarks[LANDMARKS.LEFT_HIP],
       landmarks[LANDMARKS.LEFT_KNEE]
     );
-    angles.push({ name: 'Left Hip', angle: leftHipAngle, side: 'left', type: 'leg' });
+    angles.push({ name: 'Left Hip', angle: leftHip.angle, side: 'left', type: 'leg', isDetected: leftHip.isDetected });
 
     // 右股関節角度（肩-腰-膝）
-    const rightHipAngle = calculateAngle(
+    const rightHip = calculateAngleWithDetection(
       landmarks[LANDMARKS.RIGHT_SHOULDER],
       landmarks[LANDMARKS.RIGHT_HIP],
       landmarks[LANDMARKS.RIGHT_KNEE]
     );
-    angles.push({ name: 'Right Hip', angle: rightHipAngle, side: 'right', type: 'leg' });
+    angles.push({ name: 'Right Hip', angle: rightHip.angle, side: 'right', type: 'leg', isDetected: rightHip.isDetected });
 
     return angles;
   };
@@ -377,6 +485,7 @@ export default function JointAngleAnalyzer({
                     type={joint.type}
                     name={joint.name}
                     size={50}
+                    isDetected={joint.isDetected}
                   />
                 ))}
             </Box>
@@ -412,6 +521,7 @@ export default function JointAngleAnalyzer({
                     type={joint.type}
                     name={joint.name}
                     size={50}
+                    isDetected={joint.isDetected}
                   />
                 ))}
             </Box>
