@@ -3,13 +3,13 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import Box from '@mui/material/Box';
+import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import DummyBox from '../../components/layout/DummyBox';
 import FetchDemo from '../../components/FetchDemo';
-import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 
 // クライアントサイドのみでレンダリングする必要がある
-const MultiTracker = dynamic(
-  () => import('../../components/multi/MultiTracker'),
+const MultiTrackerWithLockOn = dynamic(
+  () => import('../../components/multi/MultiTrackerWithLockOn'),
   { ssr: false }
 );
 
@@ -24,10 +24,11 @@ export default function MultiTrackingPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', p: 4, pl: 12, minHeight: '100vh', background: '#fff', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
       <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <MultiTracker 
+        <MultiTrackerWithLockOn 
           width={560} 
           height={420} 
-          onPoseDetected={setPoseData} 
+          onPoseDetected={setPoseData}
+          lockOnEnabled={true}
         />
       </Box>
       <Box sx={{ width: 560, minWidth: 560, maxWidth: 560, ml: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

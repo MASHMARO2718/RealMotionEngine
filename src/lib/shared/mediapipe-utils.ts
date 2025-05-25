@@ -195,7 +195,8 @@ export function drawPoseLandmarks(
   videoWidth: number,
   videoHeight: number,
   isMirrored: boolean = true,
-  glowSize: number = 10
+  glowSize: number = 10,
+  useWhiteColor: boolean = false
 ): void {
   // 結果がない場合は早期リターン
   if (!result || !result.landmarks || result.landmarks.length === 0) {
@@ -224,15 +225,20 @@ export function drawPoseLandmarks(
     // パーツに応じた色を設定
     let lineColor = CYBERPUNK_COLORS.connection;
     
-    // 左側の腕や脚
-    if ([11, 13, 15, 23, 25, 27, 29, 31].includes(start) || 
-             [11, 13, 15, 23, 25, 27, 29, 31].includes(end)) {
-      lineColor = CYBERPUNK_COLORS.leftSide;
-    } 
-    // 右側の腕や脚
-    else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(start) || 
-             [12, 14, 16, 24, 26, 28, 30, 32].includes(end)) {
-      lineColor = CYBERPUNK_COLORS.rightSide;
+    // 白色モード時は全て白にする
+    if (useWhiteColor) {
+      lineColor = '#ffffff';
+    } else {
+      // 左側の腕や脚
+      if ([11, 13, 15, 23, 25, 27, 29, 31].includes(start) || 
+               [11, 13, 15, 23, 25, 27, 29, 31].includes(end)) {
+        lineColor = CYBERPUNK_COLORS.leftSide;
+      } 
+      // 右側の腕や脚
+      else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(start) || 
+               [12, 14, 16, 24, 26, 28, 30, 32].includes(end)) {
+        lineColor = CYBERPUNK_COLORS.rightSide;
+      }
     }
     
     // グラデーション効果を追加
@@ -279,11 +285,16 @@ export function drawPoseLandmarks(
       pointSize = 8;
     }
     
-    // 部位ごとに色を変える（頭部は除外済み）
-    if ([11, 13, 15, 23, 25, 27, 29, 31].includes(index)) { // 左側
-      pointColor = CYBERPUNK_COLORS.leftSide;
-    } else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(index)) { // 右側
-      pointColor = CYBERPUNK_COLORS.rightSide;
+    // 白色モード時は全て白にする
+    if (useWhiteColor) {
+      pointColor = '#ffffff';
+    } else {
+      // 部位ごとに色を変える（頭部は除外済み）
+      if ([11, 13, 15, 23, 25, 27, 29, 31].includes(index)) { // 左側
+        pointColor = CYBERPUNK_COLORS.leftSide;
+      } else if ([12, 14, 16, 24, 26, 28, 30, 32].includes(index)) { // 右側
+        pointColor = CYBERPUNK_COLORS.rightSide;
+      }
     }
     
     // グローエフェクト
