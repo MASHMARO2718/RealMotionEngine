@@ -584,6 +584,9 @@ export default function MultiTrackerWithLockOn({
             // Use white color for pose landmarks when locked
             const useWhiteColor = lockOnSystemEnabled && simpleLockState === 'LOCKED';
             drawPoseLandmarks(ctx, result, canvas.width, canvas.height, true, glowSize, useWhiteColor);
+            
+            // 関節角度を描画
+            drawJointAngles(ctx, result, canvas.width, canvas.height);
           }
           
           // 🔧 ROI自動追従：ポーズが検出されたら常にROIを更新
@@ -834,6 +837,236 @@ export default function MultiTrackerWithLockOn({
     setLostFrameCount(0);
     // Don't clear ROI - keep it visible for continuous tracking
     // setCurrentROI(null);
+  };
+
+  // 関節角度を計算して描画する関数
+  const drawJointAngles = (ctx: CanvasRenderingContext2D, result: PoseLandmarkerResult, canvasWidth: number, canvasHeight: number) => {
+    if (!result.landmarks || result.landmarks.length === 0) return;
+    
+    const landmarks = result.landmarks[0];
+    
+    // MediaPipeランドマークインデックス
+    const LANDMARKS = {
+      LEFT_SHOULDER: 11,
+      RIGHT_SHOULDER: 12,
+      LEFT_ELBOW: 13,
+      RIGHT_ELBOW: 14,
+      LEFT_WRIST: 15,
+      RIGHT_WRIST: 16,
+      LEFT_HIP: 23,
+      RIGHT_HIP: 24,
+      LEFT_KNEE: 25,
+      RIGHT_KNEE: 26,
+      LEFT_ANKLE: 27,
+      RIGHT_ANKLE: 28,
+    };
+
+    // 3点から角度を計算する関数
+    const calculateAngle = (p1: any, p2: any, p3: any): number => {
+      if (!p1 || !p2 || !p3) return 0;
+      
+      // ベクトル計算
+      const vec1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+      const vec2 = { x: p3.x - p2.x, y: p3.y - p2.y };
+      
+      // 内積と大きさ
+      const dot = vec1.x * vec2.x + vec1.y * vec2.y;
+      const mag1 = Math.sqrt(vec1.x * vec1.x + vec1.y * vec1.y);
+      const mag2 = Math.sqrt(vec2.x * vec2.x + vec2.y * vec2.y);
+      
+      if (mag1 * mag2 === 0) return 0;
+      
+      // 角度計算（ラジアンから度へ変換）
+      const cosAngle = dot / (mag1 * mag2);
+      const angleRad = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
+      return (angleRad * 180) / Math.PI;
+    };
+
+    // ランドマークの座標をキャンバス座標に変換（ミラーリング考慮）
+    const getLandmarkPosition = (landmark: any) => {
+      if (!landmark || landmark.visibility < 0.5) return null;
+      return {
+        x: canvasWidth - (landmark.x * canvasWidth), // ミラーリング
+        y: landmark.y * canvasHeight
+      };
+    };
+
+    // 角度弧を描画する関数
+    const drawAngleArc = (center: {x: number, y: number}, point1: {x: number, y: number}, point2: {x: number, y: number}, angle: number, label: string, color: string = '#ffff00') => {
+      ctx.save();
+      
+      // 2つのベクトルの角度を計算
+      const angle1 = Math.atan2(point1.y - center.y, point1.x - center.x);
+      const angle2 = Math.atan2(point2.y - center.y, point2.x - center.x);
+      
+      // 角度を正規化 (-π to π)
+      let startAngle = angle1;
+      let endAngle = angle2;
+      
+      // 角度の差を計算して、小さい方の弧を描画
+      let angleDiff = endAngle - startAngle;
+      if (angleDiff > Math.PI) {
+        angleDiff -= 2 * Math.PI;
+      } else if (angleDiff < -Math.PI) {
+        angleDiff += 2 * Math.PI;
+      }
+      
+      // 時計回りの場合は角度を入れ替え
+      if (angleDiff < 0) {
+        [startAngle, endAngle] = [endAngle, startAngle];
+      }
+      
+      // 弧の半径を計算（2点までの距離の最小値の40%）
+      const dist1 = Math.sqrt((point1.x - center.x) ** 2 + (point1.y - center.y) ** 2);
+      const dist2 = Math.sqrt((point2.x - center.x) ** 2 + (point2.y - center.y) ** 2);
+      const arcRadius = Math.min(dist1, dist2) * 0.4;
+      
+      // 弧を描画
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, arcRadius, startAngle, endAngle);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      
+      // 弧の端に小さな線を描画
+      ctx.beginPath();
+      ctx.moveTo(
+        center.x + Math.cos(startAngle) * (arcRadius - 5),
+        center.y + Math.sin(startAngle) * (arcRadius - 5)
+      );
+      ctx.lineTo(
+        center.x + Math.cos(startAngle) * (arcRadius + 5),
+        center.y + Math.sin(startAngle) * (arcRadius + 5)
+      );
+      ctx.moveTo(
+        center.x + Math.cos(endAngle) * (arcRadius - 5),
+        center.y + Math.sin(endAngle) * (arcRadius - 5)
+      );
+      ctx.lineTo(
+        center.x + Math.cos(endAngle) * (arcRadius + 5),
+        center.y + Math.sin(endAngle) * (arcRadius + 5)
+      );
+      ctx.stroke();
+      
+      // 角度テキストを弧の中央付近に表示
+      const midAngle = (startAngle + endAngle) / 2;
+      const textRadius = arcRadius + 15;
+      const textX = center.x + Math.cos(midAngle) * textRadius;
+      const textY = center.y + Math.sin(midAngle) * textRadius;
+      
+      // 背景の丸
+      ctx.beginPath();
+      ctx.arc(textX, textY, 18, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fill();
+      
+      // 角度テキスト
+      ctx.fillStyle = color;
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${Math.round(angle)}°`, textX, textY - 2);
+      
+      // ラベル
+      ctx.font = 'bold 7px Arial';
+      ctx.fillText(label, textX, textY + 8);
+      
+      ctx.restore();
+    };
+
+    // 関節角度計算と描画
+    try {
+      // 左肘関節角度（肩-肘-手首）
+      const leftShoulder = landmarks[LANDMARKS.LEFT_SHOULDER];
+      const leftElbow = landmarks[LANDMARKS.LEFT_ELBOW];
+      const leftWrist = landmarks[LANDMARKS.LEFT_WRIST];
+      
+      if (leftShoulder && leftElbow && leftWrist) {
+        const leftElbowAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+        const leftElbowPos = getLandmarkPosition(leftElbow);
+        const leftShoulderPos = getLandmarkPosition(leftShoulder);
+        const leftWristPos = getLandmarkPosition(leftWrist);
+        
+        if (leftElbowPos && leftShoulderPos && leftWristPos) {
+          drawAngleArc(leftElbowPos, leftShoulderPos, leftWristPos, leftElbowAngle, 'L.Elbow', '#00ff00');
+        }
+      }
+
+      // 右肘関節角度（肩-肘-手首）
+      const rightShoulder = landmarks[LANDMARKS.RIGHT_SHOULDER];
+      const rightElbow = landmarks[LANDMARKS.RIGHT_ELBOW];
+      const rightWrist = landmarks[LANDMARKS.RIGHT_WRIST];
+      
+      if (rightShoulder && rightElbow && rightWrist) {
+        const rightElbowAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+        const rightElbowPos = getLandmarkPosition(rightElbow);
+        const rightShoulderPos = getLandmarkPosition(rightShoulder);
+        const rightWristPos = getLandmarkPosition(rightWrist);
+        
+        if (rightElbowPos && rightShoulderPos && rightWristPos) {
+          drawAngleArc(rightElbowPos, rightShoulderPos, rightWristPos, rightElbowAngle, 'R.Elbow', '#00ff00');
+        }
+      }
+
+      // 左膝関節角度（腰-膝-足首）
+      const leftHip = landmarks[LANDMARKS.LEFT_HIP];
+      const leftKnee = landmarks[LANDMARKS.LEFT_KNEE];
+      const leftAnkle = landmarks[LANDMARKS.LEFT_ANKLE];
+      
+      if (leftHip && leftKnee && leftAnkle) {
+        const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+        const leftKneePos = getLandmarkPosition(leftKnee);
+        const leftHipPos = getLandmarkPosition(leftHip);
+        const leftAnklePos = getLandmarkPosition(leftAnkle);
+        
+        if (leftKneePos && leftHipPos && leftAnklePos) {
+          drawAngleArc(leftKneePos, leftHipPos, leftAnklePos, leftKneeAngle, 'L.Knee', '#00ffff');
+        }
+      }
+
+      // 右膝関節角度（腰-膝-足首）
+      const rightHip = landmarks[LANDMARKS.RIGHT_HIP];
+      const rightKnee = landmarks[LANDMARKS.RIGHT_KNEE];
+      const rightAnkle = landmarks[LANDMARKS.RIGHT_ANKLE];
+      
+      if (rightHip && rightKnee && rightAnkle) {
+        const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+        const rightKneePos = getLandmarkPosition(rightKnee);
+        const rightHipPos = getLandmarkPosition(rightHip);
+        const rightAnklePos = getLandmarkPosition(rightAnkle);
+        
+        if (rightKneePos && rightHipPos && rightAnklePos) {
+          drawAngleArc(rightKneePos, rightHipPos, rightAnklePos, rightKneeAngle, 'R.Knee', '#00ffff');
+        }
+      }
+
+      // 左肩関節角度（肘-肩-腰）
+      if (leftElbow && leftShoulder && leftHip) {
+        const leftShoulderAngle = calculateAngle(leftElbow, leftShoulder, leftHip);
+        const leftShoulderPos = getLandmarkPosition(leftShoulder);
+        const leftElbowPos = getLandmarkPosition(leftElbow);
+        const leftHipPos = getLandmarkPosition(leftHip);
+        
+        if (leftShoulderPos && leftElbowPos && leftHipPos) {
+          drawAngleArc(leftShoulderPos, leftElbowPos, leftHipPos, leftShoulderAngle, 'L.Shoulder', '#ff8800');
+        }
+      }
+
+      // 右肩関節角度（肘-肩-腰）
+      if (rightElbow && rightShoulder && rightHip) {
+        const rightShoulderAngle = calculateAngle(rightElbow, rightShoulder, rightHip);
+        const rightShoulderPos = getLandmarkPosition(rightShoulder);
+        const rightElbowPos = getLandmarkPosition(rightElbow);
+        const rightHipPos = getLandmarkPosition(rightHip);
+        
+        if (rightShoulderPos && rightElbowPos && rightHipPos) {
+          drawAngleArc(rightShoulderPos, rightElbowPos, rightHipPos, rightShoulderAngle, 'R.Shoulder', '#ff8800');
+        }
+      }
+
+    } catch (error) {
+      console.warn('関節角度描画エラー:', error);
+    }
   };
 
   return (
