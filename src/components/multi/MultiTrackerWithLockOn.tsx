@@ -1311,18 +1311,18 @@ export default function MultiTrackerWithLockOn({
           {/* 右半分: Lock-On System (コンパクト版) */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {/* Lock-onシステムステータス & コントロール統合 */}
-            <Card sx={{
-              background: '#f5f7fa',
-              border: `1.5px solid ${lockOnSystemEnabled ? green[500] : 'gray'}`,
-              boxShadow: `0 0 8px ${lockOnSystemEnabled ? green[500] : 'gray'}22`,
-              borderRadius: 2,
-              p: 1.5,
+        <Card sx={{
+          background: '#f5f7fa',
+          border: `1.5px solid ${lockOnSystemEnabled ? green[500] : 'gray'}`,
+          boxShadow: `0 0 8px ${lockOnSystemEnabled ? green[500] : 'gray'}22`,
+          borderRadius: 2,
+          p: 1.5,
               display: 'flex',
               flexDirection: 'column'
-            }}>
+        }}>
               {/* ヘッダー部分 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <GpsFixed sx={{ color: lockOnSystemEnabled ? green[500] : 'gray', fontSize: '1.2rem' }} />
                   <Typography variant="subtitle2" sx={{ 
                     color: lockOnSystemEnabled ? green[500] : 'gray', 
@@ -1330,99 +1330,99 @@ export default function MultiTrackerWithLockOn({
                     fontFamily: 'Orbitron, sans-serif',
                     fontSize: '0.85rem'
                   }}>
-                    Lock-On System
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ 
-                  color: lockOnSystemEnabled ? 
-                    (simpleLockState === 'LOCKED' ? green[600] : 
-                     simpleLockState === 'LOST' ? 'red' : 
-                     simpleLockState === 'LOCKING' ? 'orange' : green[600]) 
-                    : 'gray',
-                  fontWeight: 600,
-                  fontSize: '0.9rem'
-                }}>
-                  {lockOnSystemEnabled ? 
-                    (simpleLockState === 'LOCKED' ? 'LOCKED' : 
-                     simpleLockState === 'LOST' ? 'LOST' : 
-                     simpleLockState === 'LOCKING' ? 'LOCKING...' : 'SEARCHING') 
-                    : 'DISABLED'}
-                </Typography>
-              </Box>
+                Lock-On System
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ 
+              color: lockOnSystemEnabled ? 
+                (simpleLockState === 'LOCKED' ? green[600] : 
+                 simpleLockState === 'LOST' ? 'red' : 
+                 simpleLockState === 'LOCKING' ? 'orange' : green[600]) 
+                : 'gray',
+              fontWeight: 600,
+              fontSize: '0.9rem'
+            }}>
+              {lockOnSystemEnabled ? 
+                (simpleLockState === 'LOCKED' ? 'LOCKED' : 
+                 simpleLockState === 'LOST' ? 'LOST' : 
+                 simpleLockState === 'LOCKING' ? 'LOCKING...' : 'SEARCHING') 
+                : 'DISABLED'}
+            </Typography>
+          </Box>
 
               {/* コントロール部分 */}
               <Box sx={{ display: 'flex', gap: 1, mb: lockOnSystemEnabled ? 1 : 0 }}>
-                <Button
-                  variant={lockOnSystemEnabled ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => {
-                    setLockOnSystemEnabled(true);
-                    console.log('🎯 Lock-onシステム有効化');
-                  }}
-                  sx={{ 
+            <Button
+              variant={lockOnSystemEnabled ? "contained" : "outlined"}
+              size="small"
+              onClick={() => {
+                setLockOnSystemEnabled(true);
+                console.log('🎯 Lock-onシステム有効化');
+              }}
+              sx={{ 
                     flex: 1,
-                    borderColor: green[500], 
-                    color: lockOnSystemEnabled ? 'white' : green[500],
-                    backgroundColor: lockOnSystemEnabled ? green[500] : 'transparent',
-                    '&:hover': { 
-                      borderColor: green[600], 
-                      backgroundColor: lockOnSystemEnabled ? green[600] : green[50] 
+                borderColor: green[500], 
+                color: lockOnSystemEnabled ? 'white' : green[500],
+                backgroundColor: lockOnSystemEnabled ? green[500] : 'transparent',
+                '&:hover': { 
+                  borderColor: green[600], 
+                  backgroundColor: lockOnSystemEnabled ? green[600] : green[50] 
                     },
                     fontSize: '0.7rem',
                     py: 0.5
-                  }}
-                >
+              }}
+            >
                   ENABLE
-                </Button>
-                <Button
-                  variant={!lockOnSystemEnabled ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => {
-                    setLockOnSystemEnabled(false);
-                    console.log('🎯 Lock-onシステム無効化');
-                    setCurrentROI(null);
-                    setSimpleLockState('SEARCHING');
-                    setGoodFrameCount(0);
-                    setLostFrameCount(0);
-                    setIsFullBodyVisible(false);
-                    setPreviousFullBodyVisible(false);
-                  }}
-                  sx={{ 
+            </Button>
+            <Button
+              variant={!lockOnSystemEnabled ? "contained" : "outlined"}
+              size="small"
+              onClick={() => {
+                setLockOnSystemEnabled(false);
+                console.log('🎯 Lock-onシステム無効化');
+                setCurrentROI(null);
+                setSimpleLockState('SEARCHING');
+                setGoodFrameCount(0);
+                setLostFrameCount(0);
+                setIsFullBodyVisible(false);
+                setPreviousFullBodyVisible(false);
+              }}
+              sx={{ 
                     flex: 1,
-                    borderColor: 'gray', 
-                    color: !lockOnSystemEnabled ? 'white' : 'gray',
-                    backgroundColor: !lockOnSystemEnabled ? 'gray' : 'transparent',
-                    '&:hover': { 
-                      borderColor: '#666', 
-                      backgroundColor: !lockOnSystemEnabled ? '#666' : '#f5f5f5' 
+                borderColor: 'gray', 
+                color: !lockOnSystemEnabled ? 'white' : 'gray',
+                backgroundColor: !lockOnSystemEnabled ? 'gray' : 'transparent',
+                '&:hover': { 
+                  borderColor: '#666', 
+                  backgroundColor: !lockOnSystemEnabled ? '#666' : '#f5f5f5' 
                     },
                     fontSize: '0.7rem',
                     py: 0.5
-                  }}
-                >
+              }}
+            >
                   DISABLE
-                </Button>
-              </Box>
+            </Button>
+          </Box>
 
               {/* Reacquire Target ボタン */}
-              {lockOnSystemEnabled && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleReacquireTarget}
-                  fullWidth
-                  sx={{ 
-                    borderColor: green[500], 
-                    color: green[500],
+          {lockOnSystemEnabled && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleReacquireTarget}
+                fullWidth
+                sx={{ 
+                  borderColor: green[500], 
+                  color: green[500],
                     '&:hover': { borderColor: green[600], backgroundColor: green[50] },
                     fontSize: '0.7rem',
                     py: 0.5
-                  }}
-                >
+                }}
+              >
                   REACQUIRE TARGET
-                </Button>
-              )}
-            </Card>
+              </Button>
+          )}
+        </Card>
           </Box>
         </Box>
 

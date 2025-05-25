@@ -1,10 +1,12 @@
 'use client';
 
 import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
-import { Analytics, BarChart, DirectionsRun, Height, Timeline, Visibility } from '@mui/icons-material';
+import { Analytics, BarChart, DirectionsRun, ExpandLess, ExpandMore, Height, Timeline, Visibility } from '@mui/icons-material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import { blue, green, orange, purple, red } from '@mui/material/colors';
@@ -66,6 +68,22 @@ export default function BodyDataAnalyzer({
 }: BodyDataAnalyzerProps) {
   const [analysis, setAnalysis] = useState<AnalysisMetrics | null>(null);
   const [isActive, setIsActive] = useState(false);
+
+  // トグル状態管理
+  const [expandedSections, setExpandedSections] = useState({
+    detectionQuality: true,
+    poseType: true,
+    bodyAlignment: true,
+    stability: true,
+    limbPositions: true,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   // ポーズデータを解析してメトリクスを計算
   const analyzeBodyData = (data: PoseLandmarkerResult): AnalysisMetrics => {
@@ -298,63 +316,89 @@ export default function BodyDataAnalyzer({
           <Card sx={{ p: 1.5, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Visibility sx={{ color: blue[500], fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                 Detection Quality
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('detectionQuality')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.detectionQuality ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={analysis.overallConfidence}
-              sx={{ 
-                height: 8, 
-                borderRadius: 4,
-                bgcolor: '#eee',
-                '& .MuiLinearProgress-bar': {
-                  backgroundColor: getScoreColor(analysis.overallConfidence)
-                }
-              }}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                {analysis.visibleLandmarks}/{analysis.totalLandmarks} landmarks
-              </Typography>
-              <Typography variant="caption" sx={{ 
-                fontSize: '0.7rem',
-                color: getScoreColor(analysis.overallConfidence),
-                fontWeight: 'bold'
-              }}>
-                {analysis.overallConfidence.toFixed(1)}%
-              </Typography>
-            </Box>
+            <Collapse in={expandedSections.detectionQuality}>
+              <LinearProgress 
+                variant="determinate" 
+                value={analysis.overallConfidence}
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: '#eee',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: getScoreColor(analysis.overallConfidence)
+                  }
+                }}
+              />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                  {analysis.visibleLandmarks}/{analysis.totalLandmarks} landmarks
+                </Typography>
+                <Typography variant="caption" sx={{ 
+                  fontSize: '0.7rem',
+                  color: getScoreColor(analysis.overallConfidence),
+                  fontWeight: 'bold'
+                }}>
+                  {analysis.overallConfidence.toFixed(1)}%
+                </Typography>
+              </Box>
+            </Collapse>
           </Card>
 
           {/* ポーズタイプ */}
           <Card sx={{ p: 1.5, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Height sx={{ color: purple[500], fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                 Pose Type
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('poseType')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.poseType ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
-            <Chip 
-              label={analysis.poseType}
-              sx={{ 
-                bgcolor: purple[100],
-                color: purple[700],
-                fontWeight: 'bold',
-                fontSize: '0.8rem'
-              }}
-            />
+            <Collapse in={expandedSections.poseType}>
+              <Chip 
+                label={analysis.poseType}
+                sx={{ 
+                  bgcolor: purple[100],
+                  color: purple[700],
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem'
+                }}
+              />
+            </Collapse>
           </Card>
 
           {/* 体のアライメント */}
           <Card sx={{ p: 1.5, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <BarChart sx={{ color: orange[500], fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                 Body Alignment
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('bodyAlignment')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.bodyAlignment ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
+            <Collapse in={expandedSections.bodyAlignment}>
             
             {['shoulderBalance', 'hipBalance', 'spineAlignment'].map((key) => {
               const score = analysis.bodyAlignment[key as keyof typeof analysis.bodyAlignment];
@@ -393,16 +437,25 @@ export default function BodyDataAnalyzer({
                 </Box>
               );
             })}
+            </Collapse>
           </Card>
 
           {/* 安定性 */}
           <Card sx={{ p: 1.5, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Timeline sx={{ color: blue[500], fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                 Stability
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('stability')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.stability ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
+            <Collapse in={expandedSections.stability}>
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
@@ -429,24 +482,33 @@ export default function BodyDataAnalyzer({
               }}
             />
             
-            <Typography variant="caption" sx={{ 
-              fontSize: '0.6rem', 
-              color: '#666',
-              mt: 0.5,
-              display: 'block'
-            }}>
-              Center: ({analysis.stability.centerOfMass.x.toFixed(2)}, {analysis.stability.centerOfMass.y.toFixed(2)})
-            </Typography>
+              <Typography variant="caption" sx={{ 
+                fontSize: '0.6rem', 
+                color: '#666',
+                mt: 0.5,
+                display: 'block'
+              }}>
+                Center: ({analysis.stability.centerOfMass.x.toFixed(2)}, {analysis.stability.centerOfMass.y.toFixed(2)})
+              </Typography>
+            </Collapse>
           </Card>
 
           {/* 四肢の位置 */}
-          <Card sx={{ p: 1.5, borderRadius: 2, flexGrow: 1 }}>
+          <Card sx={{ p: 1.5, borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <DirectionsRun sx={{ color: green[500], fontSize: '1.1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                 Limb Positions
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('limbPositions')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.limbPositions ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
+            <Collapse in={expandedSections.limbPositions}>
             
             {Object.entries(analysis.limbPositions).map(([limb, value]) => {
               const labels = {
@@ -484,6 +546,7 @@ export default function BodyDataAnalyzer({
                 </Box>
               );
             })}
+            </Collapse>
           </Card>
         </>
       )}
@@ -492,7 +555,7 @@ export default function BodyDataAnalyzer({
         <Card sx={{ 
           p: 3, 
           borderRadius: 2, 
-          flexGrow: 1,
+          minHeight: 200,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',

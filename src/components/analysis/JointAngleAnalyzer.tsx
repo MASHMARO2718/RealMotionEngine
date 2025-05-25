@@ -1,11 +1,13 @@
 'use client';
 
 import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
-import { Assessment, TrendingUp } from '@mui/icons-material';
+import { Assessment, ExpandLess, ExpandMore, TrendingUp } from '@mui/icons-material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
 import { blue, green, orange, red } from '@mui/material/colors';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
@@ -299,6 +301,19 @@ export default function JointAngleAnalyzer({
   const [jointAngles, setJointAngles] = useState<JointAngle[]>([]);
   const [isActive, setIsActive] = useState(false);
 
+  // トグル状態管理
+  const [expandedSections, setExpandedSections] = useState({
+    arms: true,
+    legs: true,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   // 3点から角度を計算する関数（検出状態も含む）
   const calculateAngleWithDetection = (p1: any, p2: any, p3: any): { angle: number; isDetected: boolean } => {
     // ランドマークの有効性をチェック
@@ -452,7 +467,6 @@ export default function JointAngleAnalyzer({
           display: 'flex', 
           flexDirection: 'row', // 横並びに変更
           gap: 2, 
-          flexGrow: 1,
           width: '100%'
         }}>
           {/* 腕の関節 - 左側 */}
@@ -464,31 +478,40 @@ export default function JointAngleAnalyzer({
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <TrendingUp sx={{ color: green[500], fontSize: '1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', flex: 1 }}>
                 Arms
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('arms')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.arms ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
             
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr',
-              gap: 1.8,
-              justifyItems: 'center',
-              px: 1.5
-            }}>
-              {jointAngles
-                .filter(joint => joint.type === 'arm')
-                .map((joint, index) => (
-                  <CircularAngle
-                    key={index}
-                    angle={joint.angle}
-                    type={joint.type}
-                    name={joint.name}
-                    size={50}
-                    isDetected={joint.isDetected}
-                  />
-                ))}
-            </Box>
+            <Collapse in={expandedSections.arms}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr',
+                gap: 1.8,
+                justifyItems: 'center',
+                px: 1.5
+              }}>
+                {jointAngles
+                  .filter(joint => joint.type === 'arm')
+                  .map((joint, index) => (
+                    <CircularAngle
+                      key={index}
+                      angle={joint.angle}
+                      type={joint.type}
+                      name={joint.name}
+                      size={50}
+                      isDetected={joint.isDetected}
+                    />
+                  ))}
+              </Box>
+            </Collapse>
           </Card>
 
           {/* 脚の関節 - 右側 */}
@@ -500,31 +523,40 @@ export default function JointAngleAnalyzer({
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <TrendingUp sx={{ color: blue[500], fontSize: '1rem' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', flex: 1 }}>
                 Legs
               </Typography>
+              <IconButton
+                size="small"
+                onClick={() => toggleSection('legs')}
+                sx={{ p: 0.5 }}
+              >
+                {expandedSections.legs ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+              </IconButton>
             </Box>
             
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr',
-              gap: 1.8,
-              justifyItems: 'center',
-              px: 1.5
-            }}>
-              {jointAngles
-                .filter(joint => joint.type === 'leg')
-                .map((joint, index) => (
-                  <CircularAngle
-                    key={index}
-                    angle={joint.angle}
-                    type={joint.type}
-                    name={joint.name}
-                    size={50}
-                    isDetected={joint.isDetected}
-                  />
-                ))}
-            </Box>
+            <Collapse in={expandedSections.legs}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr',
+                gap: 1.8,
+                justifyItems: 'center',
+                px: 1.5
+              }}>
+                {jointAngles
+                  .filter(joint => joint.type === 'leg')
+                  .map((joint, index) => (
+                    <CircularAngle
+                      key={index}
+                      angle={joint.angle}
+                      type={joint.type}
+                      name={joint.name}
+                      size={50}
+                      isDetected={joint.isDetected}
+                    />
+                  ))}
+              </Box>
+            </Collapse>
           </Card>
         </Box>
       )}
@@ -533,7 +565,7 @@ export default function JointAngleAnalyzer({
         <Card sx={{ 
           p: 3, 
           borderRadius: 2, 
-          flexGrow: 1,
+          minHeight: 200,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',

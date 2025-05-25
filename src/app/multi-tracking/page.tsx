@@ -19,12 +19,6 @@ const ModelViewer = dynamic(
   { ssr: false }
 );
 
-// DummyBoxも動的インポートにしておく
-const DummyBox = dynamic(
-  () => import('../../components/layout/DummyBox'),
-  { ssr: false }
-);
-
 export default function MultiTrackingPage() {
   const [poseData, setPoseData] = useState<PoseLandmarkerResult | null>(null);
 
@@ -41,7 +35,7 @@ export default function MultiTrackingPage() {
         flexDirection: 'row', 
         p: 4, 
         pl: 12, 
-        width: 'max(100vw, 1470px)',
+        width: 'max(100vw, 1600px)',
         minHeight: 'calc(100vh - 32px)',
         alignItems: 'flex-start', 
         justifyContent: 'flex-start',
@@ -61,21 +55,18 @@ export default function MultiTrackingPage() {
             height={420} 
             poseData={poseData}
           />
-          <DummyBox label={"Recorder UI"} width={560} height={120} sx={{ mt: 2 }} />
         </Box>
-        <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ width: 480, minWidth: 480, maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <BodyDataAnalyzer 
             poseData={poseData}
-            width={350} 
+            width={480} 
+            height={580} 
+          />
+          <JointAngleAnalyzer 
+            poseData={poseData}
+            width={480} 
             height={320} 
           />
-          <Box sx={{ mt: 2, width: '100%' }}>
-            <JointAngleAnalyzer 
-              poseData={poseData}
-              width={350} 
-              height={400} 
-            />
-          </Box>
         </Box>
       </Box>
     </Box>
