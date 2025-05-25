@@ -20,6 +20,7 @@ interface LockOnOverlayProps {
   width: number;
   height: number;
   className?: string;
+  isFullBodyVisible?: boolean; // 🟡 全身表示判定
 }
 
 const stateStyles = {
@@ -50,7 +51,8 @@ export default function LockOnOverlay({
   state,
   width,
   height,
-  className = ''
+  className = '',
+  isFullBodyVisible = false
 }: LockOnOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const style = stateStyles[state];
@@ -61,7 +63,8 @@ export default function LockOnOverlay({
     state,
     width,
     height,
-    hasROI: !!roi
+    hasROI: !!roi,
+    isFullBodyVisible
   });
 
   useEffect(() => {
@@ -116,10 +119,14 @@ export default function LockOnOverlay({
           top: `${(roi.y / height) * 100}%`,
           width: `${(roi.width / width) * 100}%`,
           height: `${(roi.height / height) * 100}%`,
-          borderColor: state === 'LOST' ? '#ef4444' : '#00ff00', // 🟢 緑色で見やすく
+          borderColor: state === 'LOST' ? '#ef4444' : 
+                      isFullBodyVisible ? '#00ff00' : '#ffff00', // 🟢 全身時は蛍光緑、通常時は蛍光黄色
           borderWidth: '3px', // 🟢 適度な太さ
-          backgroundColor: state === 'LOCKED' ? 'rgba(0, 255, 0, 0.1)' : 'transparent', // 🟢 薄い緑の背景
-          boxShadow: `0 0 15px ${state === 'LOST' ? '#ef4444' : '#00ff00'}`, // 🟢 緑のグロー
+          backgroundColor: state === 'LOCKED' ? 
+                           (isFullBodyVisible ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 255, 0, 0.1)') : 
+                           'transparent', // 🟢 全身時は薄い緑、通常時は薄い黄色
+          boxShadow: `0 0 15px ${state === 'LOST' ? '#ef4444' : 
+                                isFullBodyVisible ? '#00ff00' : '#ffff00'}`, // 🟢 グローも緑/黄色に
           zIndex: 10 // 🟢 適切な前面表示
         }}
       >
@@ -132,8 +139,10 @@ export default function LockOnOverlay({
               ${getCornerClasses(corner)}
             `}
             style={{
-              borderColor: state === 'LOST' ? '#ef4444' : '#00ff00', // 🟢 緑色に統一
-              boxShadow: `0 0 8px ${state === 'LOST' ? '#ef4444' : '#00ff00'}`
+              borderColor: state === 'LOST' ? '#ef4444' : 
+                          isFullBodyVisible ? '#00ff00' : '#ffff00', // 🟢 全身時は蛍光緑、通常時は蛍光黄色
+              boxShadow: `0 0 8px ${state === 'LOST' ? '#ef4444' : 
+                                   isFullBodyVisible ? '#00ff00' : '#ffff00'}`
             }}
           />
         ))}
@@ -175,13 +184,16 @@ export default function LockOnOverlay({
         <div 
           className={`w-8 h-8 border-2 rounded-full ${style.animation}`}
           style={{
-            borderColor: state === 'LOST' ? '#ef4444' : '#00ff00' // 🟢 緑色に統一
+            borderColor: state === 'LOST' ? '#ef4444' : 
+                        isFullBodyVisible ? '#00ff00' : '#ffff00', // 🟢 全身時は蛍光緑、通常時は蛍光黄色
           }}
         >
           <div className={`absolute top-1/2 left-1/2 w-4 h-0.5 transform -translate-x-1/2 -translate-y-1/2`} 
-               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : '#00ff00' }} />
+               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : 
+                                        isFullBodyVisible ? '#00ff00' : '#ffff00' }} />
           <div className={`absolute top-1/2 left-1/2 w-0.5 h-4 transform -translate-x-1/2 -translate-y-1/2`} 
-               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : '#00ff00' }} />
+               style={{ backgroundColor: state === 'LOST' ? '#ef4444' : 
+                                        isFullBodyVisible ? '#00ff00' : '#ffff00' }} />
         </div>
       </div>
     </div>

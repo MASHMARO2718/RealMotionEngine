@@ -100,6 +100,15 @@ export default function MultiTrackerWithLockOn({
   });
   const requestRef = useRef<number | null>(null);
 
+  // 🔧 強制再レンダリング用のカウンター
+  const [forceRenderCounter, setForceRenderCounter] = useState(0);
+  
+  // 🟡 全身検出状態
+  const [isFullBodyVisible, setIsFullBodyVisible] = useState(false);
+
+  // 🔊 前回の全身検出状態を記録（状態変化検出用）
+  const [previousFullBodyVisible, setPreviousFullBodyVisible] = useState(false);
+
   // Simple pose validation for lock-on
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
     if (!result.landmarks || result.landmarks.length === 0) return false;
@@ -124,8 +133,51 @@ export default function MultiTrackerWithLockOn({
   const [lostFrameCount, setLostFrameCount] = useState(0);
   const [currentROI, setCurrentROI] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   
-  // 🔧 強制再レンダリング用のカウンター
-  const [forceRenderCounter, setForceRenderCounter] = useState(0);
+  // 全身が映っているかを判定する関数
+  const checkFullBodyVisibility = (result: PoseLandmarkerResult): boolean => {
+    if (!result.landmarks || result.landmarks.length === 0) return false;
+    
+    const landmarks = result.landmarks[0];
+    
+    // 肩のランドマーク
+    const LEFT_SHOULDER = 11;
+    const RIGHT_SHOULDER = 12;
+    // 足のランドマーク  
+    const LEFT_FOOT = 31;
+    const RIGHT_FOOT = 32;
+    
+    // 肩と足の可視性をチェック
+    const leftShoulder = landmarks[LEFT_SHOULDER];
+    const rightShoulder = landmarks[RIGHT_SHOULDER];
+    const leftFoot = landmarks[LEFT_FOOT];
+    const rightFoot = landmarks[RIGHT_FOOT];
+    
+    // 肩が両方見えているか
+    const shouldersVisible = (
+      leftShoulder && (leftShoulder.visibility === undefined || leftShoulder.visibility > 0.3) &&
+      rightShoulder && (rightShoulder.visibility === undefined || rightShoulder.visibility > 0.3)
+    );
+    
+    // 足が少なくとも一方見えているか（足は見えにくいので緩い条件）
+    const feetVisible = (
+      (leftFoot && (leftFoot.visibility === undefined || leftFoot.visibility > 0.1)) ||
+      (rightFoot && (rightFoot.visibility === undefined || rightFoot.visibility > 0.1))
+    );
+    
+    const isFullBody = shouldersVisible && feetVisible;
+    
+    console.log('🟡 全身判定:', {
+      shouldersVisible,
+      feetVisible,
+      isFullBody,
+      leftShoulder: leftShoulder?.visibility,
+      rightShoulder: rightShoulder?.visibility,
+      leftFoot: leftFoot?.visibility,
+      rightFoot: rightFoot?.visibility
+    });
+    
+    return isFullBody;
+  };
 
   // Simple rectangle tracking using shoulder and foot landmarks
   const createSimpleTrackingROI = (result: PoseLandmarkerResult, canvasWidth: number, canvasHeight: number) => {
@@ -361,6 +413,56 @@ export default function MultiTrackerWithLockOn({
     }
   };
 
+  // 🔊 全身検出時の音声再生
+  const playFullBodyDetectedMessage = () => {
+    try {
+      // Web Speech API を使用してテキストを音声に変換
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance('Full-body detection is working.');
+        
+        // 音声設定
+        utterance.lang = 'en-US'; // 英語
+        utterance.rate = 1.0; // 話速（通常速度）
+        utterance.pitch = 1.0; // 音程
+        utterance.volume = 0.8; // 音量（80%）
+        
+        // 音声再生
+        window.speechSynthesis.speak(utterance);
+        
+        console.log('🔊 Full-body detection voice message played');
+      } else {
+        console.warn('Speech Synthesis not supported in this browser');
+      }
+    } catch (error) {
+      console.warn('Failed to play full-body detection message:', error);
+    }
+  };
+
+  // 🔊 全身検出解除時の音声再生
+  const playFullBodyLostMessage = () => {
+    try {
+      // Web Speech API を使用してテキストを音声に変換
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance('Full-body is not being detected.');
+        
+        // 音声設定
+        utterance.lang = 'en-US'; // 英語
+        utterance.rate = 1.0; // 話速（通常速度）
+        utterance.pitch = 1.0; // 音程
+        utterance.volume = 0.8; // 音量（80%）
+        
+        // 音声再生
+        window.speechSynthesis.speak(utterance);
+        
+        console.log('🔊 Full-body lost voice message played');
+      } else {
+        console.warn('Speech Synthesis not supported in this browser');
+      }
+    } catch (error) {
+      console.warn('Failed to play full-body lost message:', error);
+    }
+  };
+
   // Lock-on system integration
   // Now using simplified logic directly in component instead of hook
   // const lockState = { lockState: simpleLockState, roi: currentROI };
@@ -483,12 +585,40 @@ export default function MultiTrackerWithLockOn({
           
           // 🔧 ROI自動追従：ポーズが検出されたら常にROIを更新
           const roi = createSimpleTrackingROI(result, canvas.width, canvas.height);
+          
+          // 🟡 全身判定を実行
+          const fullBodyVisible = checkFullBodyVisibility(result);
+          setIsFullBodyVisible(fullBodyVisible);
+          
           console.log('🎯 ROI計算結果:', {
             hasROI: !!roi,
             roi: roi,
             canvasSize: { width: canvas.width, height: canvas.height },
-            previousROI: currentROI
+            previousROI: currentROI,
+            isFullBodyVisible: fullBodyVisible
           });
+          
+          // 🔊 状態変化検出による音声再生
+          // ※この音声再生ロジックはuseEffectに移動済み
+          // if (fullBodyVisible !== previousFullBodyVisible) {
+          //   console.log('🔊 全身検出状態変化:', {
+          //     previous: previousFullBodyVisible,
+          //     current: fullBodyVisible
+          //   });
+          //   
+          //   if (fullBodyVisible) {
+          //     // false → true：全身検出開始
+          //     console.log('🔊 全身検出開始 - 音声再生');
+          //     playFullBodyDetectedMessage();
+          //   } else {
+          //     // true → false：全身検出解除
+          //     console.log('🔊 全身検出解除 - 音声再生');
+          //     playFullBodyLostMessage();
+          //   }
+          //   
+          //   // 前回状態を更新
+          //   setPreviousFullBodyVisible(fullBodyVisible);
+          // }
           
           if (roi) {
             console.log('📦 ROI更新前:', { 
@@ -645,6 +775,32 @@ export default function MultiTrackerWithLockOn({
     });
   }, [currentROI, simpleLockState, lockOnEnabled]);
 
+  // 🔊 全身検出状態変化の監視と音声再生
+  useEffect(() => {
+    console.log('🔊 全身検出状態変化チェック:', {
+      current: isFullBodyVisible,
+      previous: previousFullBodyVisible
+    });
+    
+    // 初回レンダリング時はスキップ
+    if (previousFullBodyVisible === isFullBodyVisible) {
+      return;
+    }
+    
+    if (isFullBodyVisible && !previousFullBodyVisible) {
+      // false → true：全身検出開始
+      console.log('🔊 全身検出開始 - 音声再生');
+      playFullBodyDetectedMessage();
+    } else if (!isFullBodyVisible && previousFullBodyVisible) {
+      // true → false：全身検出解除
+      console.log('🔊 全身検出解除 - 音声再生');
+      playFullBodyLostMessage();
+    }
+    
+    // 前回状態を更新
+    setPreviousFullBodyVisible(isFullBodyVisible);
+  }, [isFullBodyVisible]);
+
   const handleTrackerChange = (name: keyof TrackerStates, type: 'enabled' | 'detecting', value: boolean) => {
     setTrackerStates(prev => ({
       ...prev,
@@ -704,6 +860,7 @@ export default function MultiTrackerWithLockOn({
                       height={height}
                       className="absolute top-0 left-0"
                       key={forceRenderCounter}
+                      isFullBodyVisible={isFullBodyVisible}
                     />
                   );
                 } else {
