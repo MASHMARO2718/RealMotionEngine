@@ -122,6 +122,12 @@ export default function MultiTrackerWithLockOn({
   // 🎯 Lock-onシステムの動的制御
   const [lockOnSystemEnabled, setLockOnSystemEnabled] = useState(lockOnEnabled);
 
+  // 🤖 人物検出システム
+  const [personDetector, setPersonDetector] = useState<any>(null);
+  const [personDetectionEnabled, setPersonDetectionEnabled] = useState(false);
+  const [lastPersonDetection, setLastPersonDetection] = useState<any>(null);
+  const personDetectionIntervalRef = useRef<number>(0);
+
   // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
     if (!result.landmarks || result.landmarks.length === 0) return false;
@@ -554,6 +560,22 @@ export default function MultiTrackerWithLockOn({
     }
   }, [selectedCameraId]);
 
+  // 🤖 人物検出初期化
+  const initializePersonDetection = useCallback(async () => {
+    try {
+      console.log('🤖 Initializing person detection...');
+      const tf = await import('@tensorflow/tfjs');
+      const cocoSsd = await import('@tensorflow-models/coco-ssd');
+      
+      await tf.ready();
+      const model = await cocoSsd.load({ base: 'mobilenet_v2' });
+      setPersonDetector(model);
+      console.log('✅ Person detection initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize person detection:', error);
+    }
+  }, []);
+
   useEffect(() => {
     async function init() {
       try {
@@ -563,6 +585,10 @@ export default function MultiTrackerWithLockOn({
         await initializeMediaPipePoseTracking();
         await initializeMediaPipeHandTracking();
         await initializeMediaPipeFaceTracking();
+        
+        // 人物検出を初期化
+        await initializePersonDetection();
+        
         setIsInitialized(true);
         await setupCamera();
       } catch (err) {
@@ -580,8 +606,13 @@ export default function MultiTrackerWithLockOn({
       disposeMediaPipePoseTracking();
       disposeMediaPipeHandTracking();
       disposeMediaPipeFaceTracking();
+      
+      // 人物検出のクリーンアップ
+      if (personDetector) {
+        personDetector.dispose();
+      }
     };
-  }, [enumerateCameras]);
+  }, [enumerateCameras, initializePersonDetection]);
 
   const setupCamera = useCallback(async () => {
     if (!videoRef.current) return;
@@ -710,7 +741,30 @@ export default function MultiTrackerWithLockOn({
           }
           
           // 🔧 ROI自動追従：ポーズが検出されたら常にROIを更新
-          const roi = createSimpleTrackingROI(result, canvas.width, canvas.height);
+          let roi = createSimpleTrackingROI(result, canvas.width, canvas.height);
+          
+          // 🤖 人物検出との統合（3フレームに1回実行）
+          if (personDetectionEnabled && personDetector && personDetectionIntervalRef.current % 3 === 0) {
+            // 非同期処理を別途実行（メインループをブロックしない）
+            personDetector.detect(video).then((personDetectionResult: any) => {
+              const persons = personDetectionResult
+                .filter((p: any) => p.class === 'person' && p.score >= 0.6)
+                .sort((a: any, b: any) => b.score - a.score);
+              
+              if (persons.length > 0) {
+                const primaryPerson = persons[0];
+                setLastPersonDetection(primaryPerson);
+                
+                console.log('🤖 Person detected:', {
+                  confidence: primaryPerson.score.toFixed(3),
+                  bbox: primaryPerson.bbox.map((v: number) => Math.round(v))
+                });
+              }
+            }).catch((error: any) => {
+              console.warn('Person detection error:', error);
+            });
+          }
+          personDetectionIntervalRef.current++;
           
           // 🟡 全身判定を実行
           const fullBodyVisible = checkFullBodyVisibility(result);
@@ -1487,6 +1541,101 @@ export default function MultiTrackerWithLockOn({
               </Button>
           )}
         </Card>
+
+            {/* 🤖 人物検出制御セクション */}
+            <Card sx={{
+              background: '#f5f7fa',
+              border: `1.5px solid ${personDetectionEnabled ? cyan[500] : 'gray'}`,
+              boxShadow: `0 0 8px ${personDetectionEnabled ? cyan[500] : 'gray'}22`,
+              borderRadius: 2,
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* ヘッダー部分 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: personDetectionEnabled ? cyan[500] : 'gray', 
+                    fontWeight: 700, 
+                    fontFamily: 'Orbitron, sans-serif',
+                    fontSize: '0.85rem'
+                  }}>
+                    🤖 Person Detection
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ 
+                  color: personDetectionEnabled ? cyan[600] : 'gray',
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}>
+                  {personDetectionEnabled ? 'ACTIVE' : 'DISABLED'}
+                </Typography>
+              </Box>
+
+              {/* コントロール部分 */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant={personDetectionEnabled ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => {
+                    setPersonDetectionEnabled(true);
+                    console.log('🤖 Person detection enabled');
+                  }}
+                  disabled={!personDetector}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: cyan[500], 
+                    color: personDetectionEnabled ? 'white' : cyan[500],
+                    backgroundColor: personDetectionEnabled ? cyan[500] : 'transparent',
+                    '&:hover': { 
+                      borderColor: cyan[600], 
+                      backgroundColor: personDetectionEnabled ? cyan[600] : cyan[50] 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  ENABLE
+                </Button>
+                <Button
+                  variant={!personDetectionEnabled ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => {
+                    setPersonDetectionEnabled(false);
+                    setLastPersonDetection(null);
+                    console.log('🤖 Person detection disabled');
+                  }}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: 'gray', 
+                    color: !personDetectionEnabled ? 'white' : 'gray',
+                    backgroundColor: !personDetectionEnabled ? 'gray' : 'transparent',
+                    '&:hover': { 
+                      borderColor: '#666', 
+                      backgroundColor: !personDetectionEnabled ? '#666' : '#f5f5f5' 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  DISABLE
+                </Button>
+              </Box>
+
+              {/* 検出状況表示 */}
+              {personDetectionEnabled && lastPersonDetection && (
+                <Box sx={{ mt: 1, p: 0.5, backgroundColor: 'rgba(0,188,212,0.1)', borderRadius: 1 }}>
+                  <Typography variant="caption" sx={{ 
+                    color: cyan[700],
+                    fontSize: '0.65rem',
+                    fontFamily: 'monospace'
+                  }}>
+                    Confidence: {(lastPersonDetection.score * 100).toFixed(1)}%
+                  </Typography>
+                </Box>
+              )}
+            </Card>
           </Box>
         </Box>
 
