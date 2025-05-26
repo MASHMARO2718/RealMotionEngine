@@ -122,22 +122,39 @@ export default function MultiTrackerWithLockOn({
   // 🎯 Lock-onシステムの動的制御
   const [lockOnSystemEnabled, setLockOnSystemEnabled] = useState(lockOnEnabled);
 
-  // Simple pose validation for lock-on
+  // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
     if (!result.landmarks || result.landmarks.length === 0) return false;
     
     const landmarks = result.landmarks[0];
     if (!landmarks || landmarks.length < 33) return false;
     
-    // Check key landmarks: shoulders(11,12), hips(23,24) - more reliable than nose
-    const keyIndices = [11, 12, 23, 24];
+    // Expanded key landmarks for more reliable detection
+    const keyIndices = [
+      0,   // nose
+      11, 12, // shoulders
+      23, 24, // hips
+      25, 26, // knees
+      27, 28  // ankles
+    ];
+    
+    const VISIBILITY_THRESHOLD = 0.5; // Stricter threshold (was 0.1)
+    const REQUIRED_LANDMARKS = 6; // Need more landmarks (was 2)
+    
     const visibleCount = keyIndices.filter(i => {
       if (i >= landmarks.length) return false;
       const landmark = landmarks[i];
-      return landmark.visibility !== undefined && landmark.visibility > 0.1; // Very lenient threshold
+      return landmark.visibility !== undefined && landmark.visibility > VISIBILITY_THRESHOLD;
     }).length;
     
-    return visibleCount >= 2; // Only need 2 of 4 key landmarks visible (shoulders or hips)
+    console.log('🔒 Enhanced lock validation:', {
+      visibleCount,
+      required: REQUIRED_LANDMARKS,
+      threshold: VISIBILITY_THRESHOLD,
+      isValid: visibleCount >= REQUIRED_LANDMARKS
+    });
+    
+    return visibleCount >= REQUIRED_LANDMARKS;
   };
 
   // Simplified lock-on state (without workers for now)
@@ -218,27 +235,32 @@ export default function MultiTrackerWithLockOn({
     const RIGHT_FOOT = 32; // right foot index
     const NOSE = 0; // for head reference
     
-    // 🔧 更に緩い条件：肩、腰、足のいずれかが見えればOK
+    // Enhanced ROI generation with stricter requirements
     const allLandmarks = [LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP, LEFT_FOOT, RIGHT_FOOT];
+    const ROI_VISIBILITY_THRESHOLD = 0.3; // Stricter threshold for ROI generation
+    const MIN_REQUIRED_LANDMARKS = 3; // Need at least 3 landmarks for reliable ROI
+    
     const visibleLandmarks = allLandmarks.filter(index => {
       const landmark = landmarks[index];
-      const isVisible = landmark && (landmark.visibility === undefined || landmark.visibility > 0.1);
+      const isVisible = landmark && (landmark.visibility === undefined || landmark.visibility > ROI_VISIBILITY_THRESHOLD);
       console.log(`💡 Landmark ${index} visibility:`, {
         exists: !!landmark,
         visibility: landmark?.visibility,
-        isVisible
+        isVisible,
+        threshold: ROI_VISIBILITY_THRESHOLD
       });
       return isVisible;
     });
     
-    console.log('👁️ Visible landmarks:', {
+    console.log('👁️ Visible landmarks for ROI:', {
       count: visibleLandmarks.length,
       indices: visibleLandmarks,
-      required: 1
+      required: MIN_REQUIRED_LANDMARKS,
+      threshold: ROI_VISIBILITY_THRESHOLD
     });
     
-    if (visibleLandmarks.length < 1) {
-      console.log('❌ Not enough visible landmarks');
+    if (visibleLandmarks.length < MIN_REQUIRED_LANDMARKS) {
+      console.log('❌ Not enough visible landmarks for reliable ROI');
       return null;
     }
     
@@ -360,14 +382,49 @@ export default function MultiTrackerWithLockOn({
     const clampedMinY = Math.max(0, minY);
     const clampedMaxY = Math.min(canvasHeight, maxY);
     
+    const roiWidth = clampedMaxX - clampedMinX;
+    const roiHeight = clampedMaxY - clampedMinY;
+    
+    // Enhanced ROI validation with size constraints
+    const MIN_ROI_WIDTH = canvasWidth * 0.1;   // At least 10% of canvas width
+    const MAX_ROI_WIDTH = canvasWidth * 0.8;   // At most 80% of canvas width
+    const MIN_ROI_HEIGHT = canvasHeight * 0.15; // At least 15% of canvas height
+    const MAX_ROI_HEIGHT = canvasHeight * 0.9;  // At most 90% of canvas height
+    const MIN_ASPECT_RATIO = 0.3; // Minimum height/width ratio
+    const MAX_ASPECT_RATIO = 3.0; // Maximum height/width ratio
+    
+    const aspectRatio = roiHeight / roiWidth;
+    
+    console.log('🔍 ROI validation:', {
+      width: roiWidth,
+      height: roiHeight,
+      aspectRatio,
+      constraints: {
+        minWidth: MIN_ROI_WIDTH,
+        maxWidth: MAX_ROI_WIDTH,
+        minHeight: MIN_ROI_HEIGHT,
+        maxHeight: MAX_ROI_HEIGHT,
+        minAspect: MIN_ASPECT_RATIO,
+        maxAspect: MAX_ASPECT_RATIO
+      }
+    });
+    
+    // Validate ROI dimensions
+    if (roiWidth < MIN_ROI_WIDTH || roiWidth > MAX_ROI_WIDTH ||
+        roiHeight < MIN_ROI_HEIGHT || roiHeight > MAX_ROI_HEIGHT ||
+        aspectRatio < MIN_ASPECT_RATIO || aspectRatio > MAX_ASPECT_RATIO) {
+      console.log('❌ ROI failed validation checks');
+      return null;
+    }
+    
     const finalROI = {
       x: clampedMinX,
       y: clampedMinY,
-      width: clampedMaxX - clampedMinX,
-      height: clampedMaxY - clampedMinY
+      width: roiWidth,
+      height: roiHeight
     };
     
-    console.log('🎯 Final ROI:', finalROI);
+    console.log('🎯 Enhanced Final ROI:', finalROI);
     return finalROI;
   };
 
@@ -716,8 +773,11 @@ export default function MultiTrackerWithLockOn({
               setGoodFrameCount(prev => {
                 const newCount = prev + 1;
                 console.log('✅ Good frame count:', newCount);
-                // Reduced from 2 to 1 frame for faster locking
-                if (newCount >= 1 && simpleLockState === 'SEARCHING') {
+                
+                // Enhanced frame requirements for more stable locking
+                const REQUIRED_GOOD_FRAMES = 5; // Increased from 1 to 5 frames
+                
+                if (newCount >= REQUIRED_GOOD_FRAMES && simpleLockState === 'SEARCHING') {
                   console.log('🔄 状態変更: SEARCHING → LOCKING');
                   setSimpleLockState('LOCKING');
                   setTimeout(() => {
@@ -725,19 +785,22 @@ export default function MultiTrackerWithLockOn({
                     setSimpleLockState('LOCKED');
                     // Play lock beep
                     playLockBeep();
-                  }, 100); // Reduced delay from 150ms to 100ms
+                  }, 200); // Slightly increased delay for stability
                 }
                 return newCount;
               });
               setLostFrameCount(0);
             } else {
-              // Lock-on条件に満たないが、ROIは継続表示
+              // Reset good frame count when pose is invalid
               setGoodFrameCount(0);
               setLostFrameCount(prev => {
                 const newCount = prev + 1;
                 console.log('❌ Lost frame count:', newCount);
-                // Reduced from 10 to 5 frames for faster lost detection
-                if (newCount >= 5 && simpleLockState === 'LOCKED') {
+                
+                // Enhanced lost frame threshold for stability
+                const LOST_FRAME_THRESHOLD = 10; // Increased from 5 to 10 frames
+                
+                if (newCount >= LOST_FRAME_THRESHOLD && simpleLockState === 'LOCKED') {
                   console.log('🔄 状態変更: LOCKED → LOST');
                   setSimpleLockState('LOST');
                   // Play lost boops
@@ -745,8 +808,9 @@ export default function MultiTrackerWithLockOn({
                   setTimeout(() => {
                     console.log('🔄 状態変更: LOST → SEARCHING');
                     setSimpleLockState('SEARCHING');
-                    // ROIはクリアしない - 継続表示
-                  }, 2000); // Reduced from 3000ms
+                    // Clear ROI when transitioning back to searching
+                    setCurrentROI(null);
+                  }, 3000); // Increased timeout for user awareness
                 }
                 return newCount;
               });
