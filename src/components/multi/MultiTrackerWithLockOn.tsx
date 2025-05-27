@@ -8,7 +8,7 @@ import { DirectionsRun, Face, GpsFixed, RadioButtonChecked, SportsHandball, Vide
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import { blue, cyan, green, orange } from '@mui/material/colors';
+import { blue, cyan, green, orange, purple } from '@mui/material/colors';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
@@ -21,7 +21,9 @@ import { detectFaceLandmarks, disposeMediaPipeFaceTracking, initializeMediaPipeF
 import { detectHandLandmarks, disposeMediaPipeHandTracking, initializeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
 import { detectPoseLandmarks, disposeMediaPipePoseTracking, initializeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { CYBERPUNK_COLORS, drawHandLandmarks, drawPoseLandmarks } from '../../lib/shared/mediapipe-utils';
+import { PoseAnalyticsEngine, FullPoseAnalysis } from '../../lib/analytics/PoseAnalytics';
 import LockOnOverlay from '../lockOn/LockOnOverlay';
+import OrientationOverlay from '../analytics/OrientationOverlay';
 
 type TrackerState = {
   enabled: boolean;
@@ -127,6 +129,11 @@ export default function MultiTrackerWithLockOn({
   const [personDetectionEnabled, setPersonDetectionEnabled] = useState(false);
   const [lastPersonDetection, setLastPersonDetection] = useState<any>(null);
   const personDetectionIntervalRef = useRef<number>(0);
+
+  // 📊 ポーズ解析システム
+  const [poseAnalyticsEngine] = useState(() => new PoseAnalyticsEngine());
+  const [currentAnalysis, setCurrentAnalysis] = useState<FullPoseAnalysis | null>(null);
+  const [showAnalyticsOverlay, setShowAnalyticsOverlay] = useState(false);
 
   // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
@@ -871,6 +878,16 @@ export default function MultiTrackerWithLockOn({
             }
           }
           
+          // 📊 ポーズ解析システムでフレームを解析
+          if (showAnalyticsOverlay) {
+            try {
+              const analysis = poseAnalyticsEngine.analyzeFrame(result, undefined, Math.floor(timestamp));
+              setCurrentAnalysis(analysis);
+            } catch (error) {
+              console.warn('Pose analytics error:', error);
+            }
+          }
+
           // Always forward pose data (lock-on doesn't interfere with pose detection)
           if (onPoseDetected) {
             onPoseDetected(result);
@@ -1299,6 +1316,22 @@ export default function MultiTrackerWithLockOn({
                   return null;
                 }
               })()}
+              
+              {/* Pose Analytics overlay */}
+              {showAnalyticsOverlay && (
+                <OrientationOverlay
+                  analysis={currentAnalysis}
+                  width={width}
+                  height={height}
+                  className="absolute top-0 left-0"
+                  showFloorInfo={true}
+                  showJointAngles={true}
+                  showHandOrientation={true}
+                  showBodyDirection={true}
+                  showCenterOfMass={true}
+                  showPostureStability={true}
+                />
+              )}
             </Box>
           </Box>
         </Card>
@@ -1421,6 +1454,83 @@ export default function MultiTrackerWithLockOn({
                   }}
                 >
                   HIDE
+                </Button>
+              </Box>
+            </Card>
+
+            {/* ポーズ解析オーバーレイ制御セクション */}
+            <Card sx={{
+              background: '#f5f7fa',
+              border: `1.5px solid ${purple[500]}`,
+              boxShadow: `0 0 8px ${purple[500]}22`,
+              borderRadius: 2,
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* ヘッダー部分 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography sx={{ fontSize: '1.2rem' }}>📊</Typography>
+                <Typography variant="subtitle2" sx={{ 
+                  color: purple[500], 
+                  fontWeight: 700, 
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '0.85rem',
+                  flex: 1
+                }}>
+                  Pose Analytics
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: showAnalyticsOverlay ? green[600] : 'gray',
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}>
+                  {showAnalyticsOverlay ? 'ON' : 'OFF'}
+                </Typography>
+              </Box>
+
+              {/* ポーズ解析on/offボタン */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant={showAnalyticsOverlay ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowAnalyticsOverlay(true)}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: purple[500], 
+                    color: showAnalyticsOverlay ? 'white' : purple[500],
+                    backgroundColor: showAnalyticsOverlay ? purple[500] : 'transparent',
+                    '&:hover': { 
+                      borderColor: purple[600], 
+                      backgroundColor: showAnalyticsOverlay ? purple[600] : purple[50] 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  ENABLE
+                </Button>
+                <Button
+                  variant={!showAnalyticsOverlay ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => {
+                    setShowAnalyticsOverlay(false);
+                    setCurrentAnalysis(null);
+                  }}
+                  sx={{ 
+                    flex: 1,
+                    borderColor: 'gray', 
+                    color: !showAnalyticsOverlay ? 'white' : 'gray',
+                    backgroundColor: !showAnalyticsOverlay ? 'gray' : 'transparent',
+                    '&:hover': { 
+                      borderColor: '#666', 
+                      backgroundColor: !showAnalyticsOverlay ? '#666' : '#f5f5f5' 
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
+                  DISABLE
                 </Button>
               </Box>
             </Card>
