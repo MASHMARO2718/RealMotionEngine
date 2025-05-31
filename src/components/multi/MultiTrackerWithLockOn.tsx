@@ -17,16 +17,16 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useWorldCoordinates } from '../../hooks/useWorldCoordinates';
+import { FullPoseAnalysis,PoseAnalyticsEngine } from '../../lib/analytics/PoseAnalytics';
 import { detectFaceLandmarks, disposeMediaPipeFaceTracking, initializeMediaPipeFaceTracking } from '../../lib/face/mediapipe-face-tracking';
 import { detectHandLandmarks, disposeMediaPipeHandTracking, initializeMediaPipeHandTracking } from '../../lib/hand/mediapipe-hand-tracking';
 import { detectPoseLandmarks, disposeMediaPipePoseTracking, initializeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { CYBERPUNK_COLORS, drawHandLandmarks, drawPoseLandmarks } from '../../lib/shared/mediapipe-utils';
-import { PoseAnalyticsEngine, FullPoseAnalysis } from '../../lib/analytics/PoseAnalytics';
-import LockOnOverlay from '../lockOn/LockOnOverlay';
+import type { PolarCoordinate, SphericalCoordinate,Vec3 } from '../../utils/coordinateTransform';
 import OrientationOverlay from '../analytics/OrientationOverlay';
 import WorldCoordinateOverlay from '../analytics/WorldCoordinateOverlay';
-import { useWorldCoordinates } from '../../hooks/useWorldCoordinates';
-import type { Vec3, PolarCoordinate, SphericalCoordinate } from '../../utils/coordinateTransform';
+import LockOnOverlay from '../lockOn/LockOnOverlay';
 
 type TrackerState = {
   enabled: boolean;
@@ -76,7 +76,10 @@ interface MultiTrackerWithLockOnProps {
   height?: number;
   glowSize?: number;
   onPoseDetected?: (result: PoseLandmarkerResult) => void;
+  onPoseResult?: (result: PoseLandmarkerResult | null) => void;
+  onError?: (errorMessage: string) => void;
   lockOnEnabled?: boolean;
+  showAnalytics?: boolean;
 }
 
 export default function MultiTrackerWithLockOn({ 
@@ -84,7 +87,10 @@ export default function MultiTrackerWithLockOn({
   height = 420, 
   glowSize = 15,
   onPoseDetected,
-  lockOnEnabled = true
+  onPoseResult,
+  onError,
+  lockOnEnabled = true,
+  showAnalytics = true
 }: MultiTrackerWithLockOnProps) {
   
   // 🔍 デバッグ：props状態を詳しく確認
@@ -942,23 +948,17 @@ export default function MultiTrackerWithLockOn({
           if (onPoseDetected) {
             onPoseDetected(result);
           }
+          
+          // Forward pose result for external consumers
+          if (onPoseResult) {
+            onPoseResult(result);
+          }
         } else {
           console.log('❌ ポーズ検出失敗またはランドマークなし');
           
-          if (lockOnSystemEnabled) {
-            // No pose detected - ROIをクリア
-            console.log('🗑️ ROIをクリア (ポーズ検出失敗)');
-            setCurrentROI(null);
-            setGoodFrameCount(0);
-            setLostFrameCount(prev => {
-              const newCount = prev + 1;
-              if (newCount >= 10 && simpleLockState === 'LOCKED') {
-                setSimpleLockState('LOST');
-                playLostBoops();
-                setTimeout(() => setSimpleLockState('SEARCHING'), 3000);
-              }
-              return newCount;
-            });
+          // Forward null result when no pose detected
+          if (onPoseResult) {
+            onPoseResult(null);
           }
         }
       }).catch(error => {

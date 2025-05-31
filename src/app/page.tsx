@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { HandGesture } from '../lib/hand/mediapipe-hand-tracking';
-import MediaPipeErrorBoundary from '../components/shared/MediaPipeErrorBoundary';
+import { useCallback,useEffect, useState } from 'react';
+
 import FetchDemo from "../components/FetchDemo";
+import MediaPipeErrorBoundary from '../components/shared/MediaPipeErrorBoundary';
+import { HandGesture } from '../lib/hand/mediapipe-hand-tracking';
 
 // クライアントサイドのみでレンダリングする必要がある
 const HandTracker = dynamic(
@@ -148,6 +149,12 @@ export default function Home() {
               className="px-4 py-2 bg-pink-600 hover:bg-pink-500 rounded-lg text-sm font-medium"
             >
               複合トラッキング
+            </Link>
+            <Link 
+              href="/polar-3d"
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium"
+            >
+              🌟 Polar 3D
             </Link>
           </div>
         </div>
