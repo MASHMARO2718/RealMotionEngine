@@ -24,6 +24,9 @@ import { CYBERPUNK_COLORS, drawHandLandmarks, drawPoseLandmarks } from '../../li
 import { PoseAnalyticsEngine, FullPoseAnalysis } from '../../lib/analytics/PoseAnalytics';
 import LockOnOverlay from '../lockOn/LockOnOverlay';
 import OrientationOverlay from '../analytics/OrientationOverlay';
+import WorldCoordinateOverlay from '../analytics/WorldCoordinateOverlay';
+import { useWorldCoordinates } from '../../hooks/useWorldCoordinates';
+import type { Vec3 } from '../../utils/coordinateTransform';
 
 type TrackerState = {
   enabled: boolean;
@@ -134,6 +137,11 @@ export default function MultiTrackerWithLockOn({
   const [poseAnalyticsEngine] = useState(() => new PoseAnalyticsEngine());
   const [currentAnalysis, setCurrentAnalysis] = useState<FullPoseAnalysis | null>(null);
   const [showAnalyticsOverlay, setShowAnalyticsOverlay] = useState(false);
+
+  // 🌍 NEW: World Coordinate System
+  const worldCoordinates = useWorldCoordinates();
+  const [showWorldCoordinates, setShowWorldCoordinates] = useState(false);
+  const [currentWorldPose, setCurrentWorldPose] = useState<{ [key: string]: Vec3 } | null>(null);
 
   // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
@@ -888,6 +896,21 @@ export default function MultiTrackerWithLockOn({
             }
           }
 
+          // 🌍 NEW: World coordinate processing
+          if (showWorldCoordinates) {
+            try {
+              const worldPose = worldCoordinates.processPoseResult(result);
+              setCurrentWorldPose(worldPose);
+              console.log('🌍 World coordinates updated:', {
+                isReady: worldCoordinates.isReady(),
+                originInitialized: worldCoordinates.state.isInitialized,
+                poseCount: worldPose ? Object.keys(worldPose).length : 0
+              });
+            } catch (error) {
+              console.warn('World coordinates error:', error);
+            }
+          }
+
           // Always forward pose data (lock-on doesn't interfere with pose detection)
           if (onPoseDetected) {
             onPoseDetected(result);
@@ -1332,6 +1355,19 @@ export default function MultiTrackerWithLockOn({
                   showPostureStability={true}
                 />
               )}
+
+              {/* 🌍 NEW: World Coordinate overlay */}
+              {showWorldCoordinates && (
+                <WorldCoordinateOverlay
+                  worldPose={currentWorldPose}
+                  isInitialized={worldCoordinates.state.isInitialized}
+                  bodyCenter={worldCoordinates.state.bodyCenter}
+                  origin={worldCoordinates.state.origin}
+                  width={width}
+                  height={height}
+                  className="absolute top-0 left-0"
+                />
+              )}
             </Box>
           </Box>
         </Card>
@@ -1341,410 +1377,53 @@ export default function MultiTrackerWithLockOn({
           {/* 左半分: カメラ・表示設定コントロール */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {/* カメラ選択セクション */}
-            <Card sx={{
-              background: '#f5f7fa',
-              border: `1.5px solid ${blue[500]}`,
-              boxShadow: `0 0 8px ${blue[500]}22`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* ヘッダー部分 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Videocam sx={{ color: blue[500], fontSize: '1.2rem' }} />
-                <Typography variant="subtitle2" sx={{ 
-                  color: blue[500], 
-                  fontWeight: 700, 
-                  fontFamily: 'Orbitron, sans-serif',
-                  fontSize: '0.85rem',
-                  flex: 1
-                }}>
-                  Camera Selection
+            <Card sx={{ background: '#f5f7fa', border: '1.5px solid #e3e3e3', boxShadow: '0 0 8px #e3e3e3', borderRadius: 2, p: 1.5 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: '#555', fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1, fontSize: '1.05rem' }}>
+                  🎥 Camera Selection
                 </Typography>
-              </Box>
-
-              {/* カメラ選択ドロップダウン */}
-              <FormControl size="small" fullWidth>
                 <Select
                   value={selectedCameraId}
-                  onChange={(e) => switchCamera(e.target.value)}
-                  sx={{ 
-                    fontSize: '0.8rem',
-                    '& .MuiSelect-select': { py: 0.5 }
+                  onChange={(e) => {
+                    switchCamera(e.target.value);
                   }}
-                  disabled={availableCameras.length === 0}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      padding: '0.5rem',
+                    },
+                  }}
                 >
-                  {availableCameras.map((camera, index) => (
-                    <MenuItem key={camera.deviceId} value={camera.deviceId} sx={{ fontSize: '0.8rem' }}>
-                      {camera.label || `Camera ${index + 1}`}
+                  {availableCameras.map((camera) => (
+                    <MenuItem key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label}
                     </MenuItem>
                   ))}
                 </Select>
-              </FormControl>
-            </Card>
-
-            {/* 関節角弧表示制御セクション */}
-            <Card sx={{
-              background: '#f5f7fa',
-              border: `1.5px solid ${orange[500]}`,
-              boxShadow: `0 0 8px ${orange[500]}22`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* ヘッダー部分 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <RadioButtonChecked sx={{ color: orange[500], fontSize: '1.2rem' }} />
-                <Typography variant="subtitle2" sx={{ 
-                  color: orange[500], 
-                  fontWeight: 700, 
-                  fontFamily: 'Orbitron, sans-serif',
-                  fontSize: '0.85rem',
-                  flex: 1
-                }}>
-                  Joint Angles Display
-                </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: showJointAngles ? green[600] : 'gray',
-                  fontWeight: 600,
-                  fontSize: '0.8rem'
-                }}>
-                  {showJointAngles ? 'ON' : 'OFF'}
-                </Typography>
-              </Box>
-
-              {/* 関節角弧表示on/offボタン */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={showJointAngles ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => setShowJointAngles(true)}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: orange[500], 
-                    color: showJointAngles ? 'white' : orange[500],
-                    backgroundColor: showJointAngles ? orange[500] : 'transparent',
-                    '&:hover': { 
-                      borderColor: orange[600], 
-                      backgroundColor: showJointAngles ? orange[600] : orange[50] 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                  }}
-                >
-                  SHOW
-                </Button>
-                <Button
-                  variant={!showJointAngles ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => setShowJointAngles(false)}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: 'gray', 
-                    color: !showJointAngles ? 'white' : 'gray',
-                    backgroundColor: !showJointAngles ? 'gray' : 'transparent',
-                    '&:hover': { 
-                      borderColor: '#666', 
-                      backgroundColor: !showJointAngles ? '#666' : '#f5f5f5' 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                  }}
-                >
-                  HIDE
-                </Button>
               </Box>
             </Card>
 
-            {/* ポーズ解析オーバーレイ制御セクション */}
-            <Card sx={{
-              background: '#f5f7fa',
-              border: `1.5px solid ${purple[500]}`,
-              boxShadow: `0 0 8px ${purple[500]}22`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* ヘッダー部分 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography sx={{ fontSize: '1.2rem' }}>📊</Typography>
-                <Typography variant="subtitle2" sx={{ 
-                  color: purple[500], 
-                  fontWeight: 700, 
-                  fontFamily: 'Orbitron, sans-serif',
-                  fontSize: '0.85rem',
-                  flex: 1
-                }}>
-                  Pose Analytics
+            {/* 表示設定セクション */}
+            <Card sx={{ background: '#f5f7fa', border: '1.5px solid #e3e3e3', boxShadow: '0 0 8px #e3e3e3', borderRadius: 2, p: 1.5 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: '#555', fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1, fontSize: '1.05rem' }}>
+                  🎯 Display Settings
                 </Typography>
-                <Typography variant="body2" sx={{ 
-                  color: showAnalyticsOverlay ? green[600] : 'gray',
-                  fontWeight: 600,
-                  fontSize: '0.8rem'
-                }}>
-                  {showAnalyticsOverlay ? 'ON' : 'OFF'}
-                </Typography>
-              </Box>
-
-              {/* ポーズ解析on/offボタン */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={showAnalyticsOverlay ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => setShowAnalyticsOverlay(true)}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: purple[500], 
-                    color: showAnalyticsOverlay ? 'white' : purple[500],
-                    backgroundColor: showAnalyticsOverlay ? purple[500] : 'transparent',
-                    '&:hover': { 
-                      borderColor: purple[600], 
-                      backgroundColor: showAnalyticsOverlay ? purple[600] : purple[50] 
+                <ToggleButtonGroup
+                  exclusive
+                  value={showJointAngles ? 'joint_angles' : 'no_joint_angles'}
+                  onChange={(_, value) => {
+                    setShowJointAngles(value === 'joint_angles');
+                  }}
+                  sx={{
+                    '& .MuiToggleButtonGroup-root': {
+                      justifyContent: 'space-between',
                     },
-                    fontSize: '0.7rem',
-                    py: 0.5
                   }}
                 >
-                  ENABLE
-                </Button>
-                <Button
-                  variant={!showAnalyticsOverlay ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => {
-                    setShowAnalyticsOverlay(false);
-                    setCurrentAnalysis(null);
-                  }}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: 'gray', 
-                    color: !showAnalyticsOverlay ? 'white' : 'gray',
-                    backgroundColor: !showAnalyticsOverlay ? 'gray' : 'transparent',
-                    '&:hover': { 
-                      borderColor: '#666', 
-                      backgroundColor: !showAnalyticsOverlay ? '#666' : '#f5f5f5' 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                  }}
-                >
-                  DISABLE
-                </Button>
+                  <ToggleButton value="joint_angles">Joint Angles</ToggleButton>
+                  <ToggleButton value="no_joint_angles">No Joint Angles</ToggleButton>
+                </ToggleButtonGroup>
               </Box>
-            </Card>
-          </Box>
-
-          {/* 右半分: Lock-On System (コンパクト版) */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Lock-onシステムステータス & コントロール統合 */}
-        <Card sx={{
-          background: '#f5f7fa',
-          border: `1.5px solid ${lockOnSystemEnabled ? green[500] : 'gray'}`,
-          boxShadow: `0 0 8px ${lockOnSystemEnabled ? green[500] : 'gray'}22`,
-          borderRadius: 2,
-          p: 1.5,
-              display: 'flex',
-              flexDirection: 'column'
-        }}>
-              {/* ヘッダー部分 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <GpsFixed sx={{ color: lockOnSystemEnabled ? green[500] : 'gray', fontSize: '1.2rem' }} />
-                  <Typography variant="subtitle2" sx={{ 
-                    color: lockOnSystemEnabled ? green[500] : 'gray', 
-                    fontWeight: 700, 
-                    fontFamily: 'Orbitron, sans-serif',
-                    fontSize: '0.85rem'
-                  }}>
-                Lock-On System
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ 
-              color: lockOnSystemEnabled ? 
-                (simpleLockState === 'LOCKED' ? green[600] : 
-                 simpleLockState === 'LOST' ? 'red' : 
-                 simpleLockState === 'LOCKING' ? 'orange' : green[600]) 
-                : 'gray',
-              fontWeight: 600,
-              fontSize: '0.9rem'
-            }}>
-              {lockOnSystemEnabled ? 
-                (simpleLockState === 'LOCKED' ? 'LOCKED' : 
-                 simpleLockState === 'LOST' ? 'LOST' : 
-                 simpleLockState === 'LOCKING' ? 'LOCKING...' : 'SEARCHING') 
-                : 'DISABLED'}
-            </Typography>
-          </Box>
-
-              {/* コントロール部分 */}
-              <Box sx={{ display: 'flex', gap: 1, mb: lockOnSystemEnabled ? 1 : 0 }}>
-            <Button
-              variant={lockOnSystemEnabled ? "contained" : "outlined"}
-              size="small"
-              onClick={() => {
-                setLockOnSystemEnabled(true);
-                console.log('🎯 Lock-onシステム有効化');
-              }}
-              sx={{ 
-                    flex: 1,
-                borderColor: green[500], 
-                color: lockOnSystemEnabled ? 'white' : green[500],
-                backgroundColor: lockOnSystemEnabled ? green[500] : 'transparent',
-                '&:hover': { 
-                  borderColor: green[600], 
-                  backgroundColor: lockOnSystemEnabled ? green[600] : green[50] 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-              }}
-            >
-                  ENABLE
-            </Button>
-            <Button
-              variant={!lockOnSystemEnabled ? "contained" : "outlined"}
-              size="small"
-              onClick={() => {
-                setLockOnSystemEnabled(false);
-                console.log('🎯 Lock-onシステム無効化');
-                setCurrentROI(null);
-                setSimpleLockState('SEARCHING');
-                setGoodFrameCount(0);
-                setLostFrameCount(0);
-                setIsFullBodyVisible(false);
-                setPreviousFullBodyVisible(false);
-              }}
-              sx={{ 
-                    flex: 1,
-                borderColor: 'gray', 
-                color: !lockOnSystemEnabled ? 'white' : 'gray',
-                backgroundColor: !lockOnSystemEnabled ? 'gray' : 'transparent',
-                '&:hover': { 
-                  borderColor: '#666', 
-                  backgroundColor: !lockOnSystemEnabled ? '#666' : '#f5f5f5' 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-              }}
-            >
-                  DISABLE
-            </Button>
-          </Box>
-
-              {/* Reacquire Target ボタン */}
-          {lockOnSystemEnabled && (
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleReacquireTarget}
-                fullWidth
-                sx={{ 
-                  borderColor: green[500], 
-                  color: green[500],
-                    '&:hover': { borderColor: green[600], backgroundColor: green[50] },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                }}
-              >
-                  REACQUIRE TARGET
-              </Button>
-          )}
-        </Card>
-
-            {/* 🤖 人物検出制御セクション */}
-            <Card sx={{
-              background: '#f5f7fa',
-              border: `1.5px solid ${personDetectionEnabled ? cyan[500] : 'gray'}`,
-              boxShadow: `0 0 8px ${personDetectionEnabled ? cyan[500] : 'gray'}22`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* ヘッダー部分 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="subtitle2" sx={{ 
-                    color: personDetectionEnabled ? cyan[500] : 'gray', 
-                    fontWeight: 700, 
-                    fontFamily: 'Orbitron, sans-serif',
-                    fontSize: '0.85rem'
-                  }}>
-                    🤖 Person Detection
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ 
-                  color: personDetectionEnabled ? cyan[600] : 'gray',
-                  fontWeight: 600,
-                  fontSize: '0.8rem'
-                }}>
-                  {personDetectionEnabled ? 'ACTIVE' : 'DISABLED'}
-                </Typography>
-              </Box>
-
-              {/* コントロール部分 */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={personDetectionEnabled ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => {
-                    setPersonDetectionEnabled(true);
-                    console.log('🤖 Person detection enabled');
-                  }}
-                  disabled={!personDetector}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: cyan[500], 
-                    color: personDetectionEnabled ? 'white' : cyan[500],
-                    backgroundColor: personDetectionEnabled ? cyan[500] : 'transparent',
-                    '&:hover': { 
-                      borderColor: cyan[600], 
-                      backgroundColor: personDetectionEnabled ? cyan[600] : cyan[50] 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                  }}
-                >
-                  ENABLE
-                </Button>
-                <Button
-                  variant={!personDetectionEnabled ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => {
-                    setPersonDetectionEnabled(false);
-                    setLastPersonDetection(null);
-                    console.log('🤖 Person detection disabled');
-                  }}
-                  sx={{ 
-                    flex: 1,
-                    borderColor: 'gray', 
-                    color: !personDetectionEnabled ? 'white' : 'gray',
-                    backgroundColor: !personDetectionEnabled ? 'gray' : 'transparent',
-                    '&:hover': { 
-                      borderColor: '#666', 
-                      backgroundColor: !personDetectionEnabled ? '#666' : '#f5f5f5' 
-                    },
-                    fontSize: '0.7rem',
-                    py: 0.5
-                  }}
-                >
-                  DISABLE
-                </Button>
-              </Box>
-
-              {/* 検出状況表示 */}
-              {personDetectionEnabled && lastPersonDetection && (
-                <Box sx={{ mt: 1, p: 0.5, backgroundColor: 'rgba(0,188,212,0.1)', borderRadius: 1 }}>
-                  <Typography variant="caption" sx={{ 
-                    color: cyan[700],
-                    fontSize: '0.65rem',
-                    fontFamily: 'monospace'
-                  }}>
-                    Confidence: {(lastPersonDetection.score * 100).toFixed(1)}%
-                  </Typography>
-                </Box>
-              )}
             </Card>
           </Box>
         </Box>
