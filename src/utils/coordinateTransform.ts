@@ -11,6 +11,18 @@ export interface Vec3 {
   z: number;
 }
 
+export interface PolarCoordinate {
+  r: number;      // 原点からの距離 (radius)
+  theta: number;  // 方位角 - 水平面での角度 (azimuth) [-π, π]
+  phi: number;    // 仰角 - 垂直角度 (elevation) [-π/2, π/2]
+}
+
+export interface SphericalCoordinate {
+  r: number;      // 原点からの距離 (radius)  
+  theta: number;  // 方位角 (azimuth) [0, 2π]
+  phi: number;    // 極角 - Z軸からの角度 (polar angle) [0, π]
+}
+
 export interface WorldOrigin {
   x: number;
   y: number;
@@ -218,5 +230,139 @@ export class CoordinateTransformSystem {
       origin: this.worldOrigin,
       isInitialized: this.worldOrigin?.isInitialized || false
     };
+  }
+
+  /**
+   * 世界座標を極座標に変換 (数学的定義)
+   * θ: 方位角 (azimuth) - XY平面でのX軸からの角度 [-π, π]
+   * φ: 仰角 (elevation) - XY平面からZ軸方向への角度 [-π/2, π/2] 
+   */
+  worldToPolar(worldCoord: Vec3): PolarCoordinate {
+    const { x, y, z } = worldCoord;
+    
+    // 原点からの距離
+    const r = Math.sqrt(x * x + y * y + z * z);
+    
+    // 方位角 (azimuth): XY平面でのX軸からの角度
+    const theta = Math.atan2(y, x);
+    
+    // 仰角 (elevation): XY平面からZ軸方向への角度
+    const phi = r > 0 ? Math.asin(z / r) : 0;
+    
+    return { r, theta, phi };
+  }
+
+  /**
+   * 世界座標を球面座標に変換 (物理学/工学定義)
+   * θ: 方位角 (azimuth) - XY平面でのX軸からの角度 [0, 2π]
+   * φ: 極角 (polar angle) - Z軸からの角度 [0, π]
+   */
+  worldToSpherical(worldCoord: Vec3): SphericalCoordinate {
+    const { x, y, z } = worldCoord;
+    
+    // 原点からの距離
+    const r = Math.sqrt(x * x + y * y + z * z);
+    
+    // 方位角 (azimuth): XY平面でのX軸からの角度 [0, 2π]
+    let theta = Math.atan2(y, x);
+    if (theta < 0) theta += 2 * Math.PI;
+    
+    // 極角 (polar angle): Z軸からの角度 [0, π]
+    const phi = r > 0 ? Math.acos(z / r) : 0;
+    
+    return { r, theta, phi };
+  }
+
+  /**
+   * 極座標を世界座標に変換
+   */
+  polarToWorld(polar: PolarCoordinate): Vec3 {
+    const { r, theta, phi } = polar;
+    
+    return {
+      x: r * Math.cos(phi) * Math.cos(theta),
+      y: r * Math.cos(phi) * Math.sin(theta),
+      z: r * Math.sin(phi)
+    };
+  }
+
+  /**
+   * 球面座標を世界座標に変換
+   */
+  sphericalToWorld(spherical: SphericalCoordinate): Vec3 {
+    const { r, theta, phi } = spherical;
+    
+    return {
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.sin(phi) * Math.sin(theta),
+      z: r * Math.cos(phi)
+    };
+  }
+
+  /**
+   * すべてのポーズランドマークを極座標に変換
+   */
+  transformPoseToPolar(result: PoseLandmarkerResult): { [key: string]: PolarCoordinate } | null {
+    const relativePose = this.transformPoseToRelative(result);
+    if (!relativePose) return null;
+
+    const polarPose: { [key: string]: PolarCoordinate } = {};
+    
+    Object.entries(relativePose).forEach(([name, worldCoord]) => {
+      polarPose[name] = this.worldToPolar(worldCoord);
+    });
+
+    return polarPose;
+  }
+
+  /**
+   * すべてのポーズランドマークを球面座標に変換
+   */
+  transformPoseToSpherical(result: PoseLandmarkerResult): { [key: string]: SphericalCoordinate } | null {
+    const relativePose = this.transformPoseToRelative(result);
+    if (!relativePose) return null;
+
+    const sphericalPose: { [key: string]: SphericalCoordinate } = {};
+    
+    Object.entries(relativePose).forEach(([name, worldCoord]) => {
+      sphericalPose[name] = this.worldToSpherical(worldCoord);
+    });
+
+    return sphericalPose;
+  }
+
+  /**
+   * 角度を度数に変換
+   */
+  static radiansToDegrees(radians: number): number {
+    return radians * (180 / Math.PI);
+  }
+
+  /**
+   * 度数をラジアンに変換  
+   */
+  static degreesToRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  /**
+   * 極座標デバッグ情報を取得
+   */
+  getPolarDebugInfo(polarPose: { [key: string]: PolarCoordinate } | null) {
+    if (!polarPose) return null;
+
+    const debugInfo: { [key: string]: any } = {};
+    
+    Object.entries(polarPose).forEach(([name, polar]) => {
+      debugInfo[name] = {
+        r: polar.r.toFixed(3),
+        theta_deg: CoordinateTransformSystem.radiansToDegrees(polar.theta).toFixed(1),
+        phi_deg: CoordinateTransformSystem.radiansToDegrees(polar.phi).toFixed(1),
+        theta_rad: polar.theta.toFixed(3),
+        phi_rad: polar.phi.toFixed(3)
+      };
+    });
+
+    return debugInfo;
   }
 } 

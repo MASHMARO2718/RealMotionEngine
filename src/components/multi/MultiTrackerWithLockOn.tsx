@@ -26,7 +26,7 @@ import LockOnOverlay from '../lockOn/LockOnOverlay';
 import OrientationOverlay from '../analytics/OrientationOverlay';
 import WorldCoordinateOverlay from '../analytics/WorldCoordinateOverlay';
 import { useWorldCoordinates } from '../../hooks/useWorldCoordinates';
-import type { Vec3 } from '../../utils/coordinateTransform';
+import type { Vec3, PolarCoordinate, SphericalCoordinate } from '../../utils/coordinateTransform';
 
 type TrackerState = {
   enabled: boolean;
@@ -142,6 +142,9 @@ export default function MultiTrackerWithLockOn({
   const worldCoordinates = useWorldCoordinates();
   const [showWorldCoordinates, setShowWorldCoordinates] = useState(false);
   const [currentWorldPose, setCurrentWorldPose] = useState<{ [key: string]: Vec3 } | null>(null);
+  const [showPolarCoordinates, setShowPolarCoordinates] = useState(false);
+  const [currentPolarPose, setCurrentPolarPose] = useState<{ [key: string]: PolarCoordinate } | null>(null);
+  const [currentSphericalPose, setCurrentSphericalPose] = useState<{ [key: string]: SphericalCoordinate } | null>(null);
 
   // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
@@ -911,6 +914,30 @@ export default function MultiTrackerWithLockOn({
             }
           }
 
+          // 🎯 NEW: Polar coordinate processing  
+          if (showPolarCoordinates) {
+            try {
+              // 極座標データを取得
+              const polarPose = worldCoordinates.state.currentPolarPose;
+              const sphericalPose = worldCoordinates.state.currentSphericalPose;
+              
+              setCurrentPolarPose(polarPose);
+              setCurrentSphericalPose(sphericalPose);
+              
+              console.log('🎯 Polar coordinates updated:', {
+                polarCount: polarPose ? Object.keys(polarPose).length : 0,
+                sphericalCount: sphericalPose ? Object.keys(sphericalPose).length : 0,
+                samplePolar: polarPose?.nose ? {
+                  r: polarPose.nose.r.toFixed(3),
+                  theta: (polarPose.nose.theta * 180/Math.PI).toFixed(1),
+                  phi: (polarPose.nose.phi * 180/Math.PI).toFixed(1)
+                } : null
+              });
+            } catch (error) {
+              console.warn('Polar coordinates error:', error);
+            }
+          }
+
           // Always forward pose data (lock-on doesn't interfere with pose detection)
           if (onPoseDetected) {
             onPoseDetected(result);
@@ -1360,16 +1387,142 @@ export default function MultiTrackerWithLockOn({
               {showWorldCoordinates && (
                 <WorldCoordinateOverlay
                   worldPose={currentWorldPose}
+                  polarPose={currentPolarPose}
+                  sphericalPose={currentSphericalPose}
                   isInitialized={worldCoordinates.state.isInitialized}
                   bodyCenter={worldCoordinates.state.bodyCenter}
                   origin={worldCoordinates.state.origin}
                   width={width}
                   height={height}
                   className="absolute top-0 left-0"
+                  showPolarCoordinates={showPolarCoordinates}
                 />
               )}
             </Box>
           </Box>
+        </Card>
+
+        {/* 🎯 NEW: Polar Coordinate System Control */}
+        <Card sx={{
+          background: '#f5f7fa',
+          border: `1.5px solid ${orange[600]}`,
+          boxShadow: `0 0 8px ${orange[600]}22`,
+          borderRadius: 2,
+          p: 1.5,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* ヘッダー部分 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Typography sx={{ fontSize: '1.2rem' }}>🎯</Typography>
+            <Typography variant="subtitle2" sx={{ 
+              color: orange[600], 
+              fontWeight: 700, 
+              fontFamily: 'Orbitron, sans-serif',
+              fontSize: '0.85rem',
+              flex: 1
+            }}>
+              Polar Coordinates
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: showPolarCoordinates ? green[600] : 'gray',
+              fontWeight: 600,
+              fontSize: '0.8rem'
+            }}>
+              {showPolarCoordinates ? 'ON' : 'OFF'}
+            </Typography>
+          </Box>
+
+          {/* 極座標on/offボタン */}
+          <Box sx={{ display: 'flex', gap: 1, mb: showPolarCoordinates ? 1 : 0 }}>
+            <Button
+              variant={showPolarCoordinates ? "contained" : "outlined"}
+              size="small"
+              onClick={() => {
+                setShowPolarCoordinates(true);
+                // 極座標を有効にする時は世界座標も有効にする
+                if (!showWorldCoordinates) {
+                  setShowWorldCoordinates(true);
+                }
+              }}
+              sx={{ 
+                flex: 1,
+                borderColor: orange[600], 
+                color: showPolarCoordinates ? 'white' : orange[600],
+                backgroundColor: showPolarCoordinates ? orange[600] : 'transparent',
+                '&:hover': { 
+                  borderColor: orange[700], 
+                  backgroundColor: showPolarCoordinates ? orange[700] : orange[50] 
+                },
+                fontSize: '0.7rem',
+                py: 0.5
+              }}
+            >
+              ENABLE
+            </Button>
+            <Button
+              variant={!showPolarCoordinates ? "contained" : "outlined"}
+              size="small"
+              onClick={() => {
+                setShowPolarCoordinates(false);
+                setCurrentPolarPose(null);
+                setCurrentSphericalPose(null);
+              }}
+              sx={{ 
+                flex: 1,
+                borderColor: 'gray', 
+                color: !showPolarCoordinates ? 'white' : 'gray',
+                backgroundColor: !showPolarCoordinates ? 'gray' : 'transparent',
+                '&:hover': { 
+                  borderColor: '#666', 
+                  backgroundColor: !showPolarCoordinates ? '#666' : '#f5f5f5' 
+                },
+                fontSize: '0.7rem',
+                py: 0.5
+              }}
+            >
+              DISABLE
+            </Button>
+          </Box>
+
+          {/* デバッグ情報表示 */}
+          {showPolarCoordinates && currentPolarPose && (
+            <Box sx={{ 
+              p: 0.8, 
+              backgroundColor: 'rgba(255,152,0,0.1)', 
+              borderRadius: 1,
+              fontFamily: 'monospace'
+            }}>
+              <Typography variant="caption" sx={{ 
+                color: orange[700],
+                fontSize: '0.65rem',
+                display: 'block'
+              }}>
+                Polar Landmarks: {Object.keys(currentPolarPose).length}
+              </Typography>
+              {currentPolarPose.nose && (
+                <Typography variant="caption" sx={{ 
+                  color: orange[700],
+                  fontSize: '0.65rem',
+                  display: 'block'
+                }}>
+                  Nose: r={currentPolarPose.nose.r.toFixed(2)}m, 
+                  θ={(currentPolarPose.nose.theta * 180/Math.PI).toFixed(1)}°, 
+                  φ={(currentPolarPose.nose.phi * 180/Math.PI).toFixed(1)}°
+                </Typography>
+              )}
+              {currentSphericalPose && currentSphericalPose.nose && (
+                <Typography variant="caption" sx={{ 
+                  color: orange[700],
+                  fontSize: '0.65rem',
+                  display: 'block'
+                }}>
+                  Spherical: θ={(currentSphericalPose.nose.theta * 180/Math.PI).toFixed(1)}°, 
+                  φ={(currentSphericalPose.nose.phi * 180/Math.PI).toFixed(1)}°
+                </Typography>
+              )}
+            </Box>
+          )}
         </Card>
 
         {/* Lock-On System Container - 右半分に配置、左半分は新コンポーネント用に空ける */}

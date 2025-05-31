@@ -10,12 +10,16 @@ import {
   DEFAULT_TRANSFORM_CONFIG,
   type CoordinateTransformConfig,
   type Vec3,
-  type WorldOrigin
+  type WorldOrigin,
+  type PolarCoordinate,
+  type SphericalCoordinate
 } from '../utils/coordinateTransform';
 
 export interface WorldCoordinatesState {
   isInitialized: boolean;
   currentPose: { [key: string]: Vec3 } | null;
+  currentPolarPose: { [key: string]: PolarCoordinate } | null;
+  currentSphericalPose: { [key: string]: SphericalCoordinate } | null;
   bodyCenter: Vec3 | null;
   origin: WorldOrigin | null;
   frameCount: number;
@@ -47,6 +51,8 @@ export function useWorldCoordinates(
   const [state, setState] = useState<WorldCoordinatesState>({
     isInitialized: false,
     currentPose: null,
+    currentPolarPose: null,
+    currentSphericalPose: null,
     bodyCenter: null,
     origin: null,
     frameCount: 0,
@@ -70,11 +76,17 @@ export function useWorldCoordinates(
     // 相対座標に変換
     const relativePose = transformSystem.transformPoseToRelative(result);
     
+    // 極座標に変換
+    const polarPose = transformSystem.transformPoseToPolar(result);
+    const sphericalPose = transformSystem.transformPoseToSpherical(result);
+    
     // State更新
     setState(prevState => ({
       ...prevState,
       isInitialized: transformSystem.getOriginInfo()?.isInitialized || false,
       currentPose: relativePose,
+      currentPolarPose: polarPose,
+      currentSphericalPose: sphericalPose,
       bodyCenter: bodyCenter,
       origin: transformSystem.getOriginInfo(),
       frameCount: prevState.frameCount + 1,
@@ -93,6 +105,8 @@ export function useWorldCoordinates(
       ...prevState,
       isInitialized: false,
       currentPose: null,
+      currentPolarPose: null,
+      currentSphericalPose: null,
       bodyCenter: null,
       origin: null,
       frameCount: 0
