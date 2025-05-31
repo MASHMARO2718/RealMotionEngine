@@ -7,7 +7,12 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-import { calculateJointRotations } from '../../lib/shared/pose-utils';import StickmanModel from './StickmanModel';function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
+import { calculateJointRotations } from '../../lib/shared/pose-utils';
+import StickmanModel from './StickmanModel';
+import CoordinateAxes3D from './CoordinateAxes3D';
+import FixedCoordinateAxes from './FixedCoordinateAxes';
+
+function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/models/stickman.glb') as any;
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -402,7 +407,7 @@ import { calculateJointRotations } from '../../lib/shared/pose-utils';import Sti
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
+function Scene({ poseData, showAxes = true }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean }) {
   return (
     <>
       {/* 改善されたライティング */}
@@ -411,6 +416,9 @@ function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
       <directionalLight position={[-10, 5, -5]} intensity={0.6} />
       <directionalLight position={[0, -5, 0]} intensity={0.4} />
       <pointLight position={[0, 5, 0]} intensity={0.3} color={0xffffff} />
+      
+      {/* 🎯 XYZ座標軸 - 世界座標系 */}
+      {showAxes && <CoordinateAxes3D position={[0, 0.05, 0]} size={3} />}
       
       {/* グリッド */}
       <Grid
@@ -444,6 +452,9 @@ function Scene({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
         enableRotate={true}
       />
       <Environment preset="sunset" />
+      
+      {/* 🎯 固定座標軸 - 画面隅に常時表示 */}
+      {showAxes && <FixedCoordinateAxes size={0.6} position="bottom-left" />}
     </>
   );
 }
@@ -452,9 +463,10 @@ interface ModelViewerProps {
   width?: number;
   height?: number;
   poseData?: PoseLandmarkerResult | null;
+  showAxes?: boolean;
 }
 
-export default function ModelViewer({ width = 560, height = 420, poseData }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData, showAxes }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       <Canvas
@@ -467,7 +479,7 @@ export default function ModelViewer({ width = 560, height = 420, poseData }: Mod
         style={{ background: '#f5f5f5' }}
         shadows
       >
-        <Scene poseData={poseData} />
+        <Scene poseData={poseData} showAxes={showAxes} />
       </Canvas>
     </Box>
   );

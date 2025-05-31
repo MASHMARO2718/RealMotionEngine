@@ -2,6 +2,7 @@
 
 import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
@@ -21,6 +22,7 @@ const ModelViewer = dynamic(
 
 export default function MultiTrackingPage() {
   const [poseData, setPoseData] = useState<PoseLandmarkerResult | null>(null);
+  const [showAxes, setShowAxes] = useState(true);
 
   return (
     <Box sx={{ 
@@ -53,11 +55,24 @@ export default function MultiTrackingPage() {
         
         {/* 右側：3Dモデルビューとデータ分析（拡大） */}
         <Box sx={{ width: 680, minWidth: 680, maxWidth: 680, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          {/* 3D表示制御 */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+            <Button
+              variant={showAxes ? "contained" : "outlined"}
+              size="small"
+              onClick={() => setShowAxes(!showAxes)}
+              color={showAxes ? "primary" : "inherit"}
+            >
+              {showAxes ? "🎯 XYZ軸: ON" : "🎯 XYZ軸: OFF"}
+            </Button>
+          </Box>
+          
           {/* 3Dモデルビュー */}
           <ModelViewer 
             width={680} 
             height={420} 
             poseData={poseData}
+            showAxes={showAxes}
           />
           
           {/* データ分析コンポーネント群 */}

@@ -40,6 +40,7 @@ export default function Polar3DTest() {
   const [poseData, setPoseData] = useState<PoseLandmarkerResult | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [show3DAxes, setShow3DAxes] = useState(true);
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
@@ -157,6 +158,18 @@ export default function Polar3DTest() {
             Polar座標系ベースの姿勢リターゲティングで3Dアバターを制御します。
             リアルタイムで姿勢を同期して動作を再現します。
           </Typography>
+
+          {/* 3D表示設定コントロール */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Button
+              variant={show3DAxes ? "contained" : "outlined"}
+              size="small"
+              onClick={() => setShow3DAxes(!show3DAxes)}
+              color={show3DAxes ? "primary" : "inherit"}
+            >
+              {show3DAxes ? "🎯 XYZ軸: ON" : "🎯 XYZ軸: OFF"}
+            </Button>
+          </Box>
           
           {!isTracking && (
             <Alert severity="warning" sx={{ mb: 2 }}>
@@ -170,6 +183,7 @@ export default function Polar3DTest() {
               height={600}
               poseData={poseData}
               showGrid={true}
+              showAxes={show3DAxes}
             />
           </Paper>
 

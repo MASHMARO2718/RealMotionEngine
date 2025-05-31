@@ -24,6 +24,7 @@ import { detectHandLandmarks, disposeMediaPipeHandTracking, initializeMediaPipeH
 import { detectPoseLandmarks, disposeMediaPipePoseTracking, initializeMediaPipePoseTracking } from '../../lib/pose/mediapipe-pose-tracking';
 import { CYBERPUNK_COLORS, drawHandLandmarks, drawPoseLandmarks } from '../../lib/shared/mediapipe-utils';
 import type { PolarCoordinate, SphericalCoordinate,Vec3 } from '../../utils/coordinateTransform';
+import CoordinateAxesOverlay from '../analytics/CoordinateAxesOverlay';
 import OrientationOverlay from '../analytics/OrientationOverlay';
 import WorldCoordinateOverlay from '../analytics/WorldCoordinateOverlay';
 import LockOnOverlay from '../lockOn/LockOnOverlay';
@@ -151,6 +152,9 @@ export default function MultiTrackerWithLockOn({
   const [showPolarCoordinates, setShowPolarCoordinates] = useState(false);
   const [currentPolarPose, setCurrentPolarPose] = useState<{ [key: string]: PolarCoordinate } | null>(null);
   const [currentSphericalPose, setCurrentSphericalPose] = useState<{ [key: string]: SphericalCoordinate } | null>(null);
+
+  // 🎯 NEW: Coordinate Axes Display
+  const [showCoordinateAxes, setShowCoordinateAxes] = useState(true);
 
   // Enhanced pose validation for lock-on with stricter conditions
   const validatePoseForLock = (result: PoseLandmarkerResult): boolean => {
@@ -943,7 +947,7 @@ export default function MultiTrackerWithLockOn({
               console.warn('Polar coordinates error:', error);
             }
           }
-
+          
           // Always forward pose data (lock-on doesn't interfere with pose detection)
           if (onPoseDetected) {
             onPoseDetected(result);
@@ -1398,46 +1402,57 @@ export default function MultiTrackerWithLockOn({
                   showPolarCoordinates={showPolarCoordinates}
                 />
               )}
+
+              {/* 🎯 NEW: Coordinate Axes overlay */}
+              {showCoordinateAxes && (
+                <CoordinateAxesOverlay
+                  width={width}
+                  height={height}
+                  position="bottom-left"
+                  size={80}
+                  className="absolute"
+                />
+              )}
             </Box>
           </Box>
         </Card>
 
         {/* 🎯 NEW: Polar Coordinate System Control */}
-        <Card sx={{
-          background: '#f5f7fa',
+            <Card sx={{
+              background: '#f5f7fa',
           border: `1.5px solid ${orange[600]}`,
           boxShadow: `0 0 8px ${orange[600]}22`,
-          borderRadius: 2,
-          p: 1.5,
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* ヘッダー部分 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              borderRadius: 2,
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* ヘッダー部分 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Typography sx={{ fontSize: '1.2rem' }}>🎯</Typography>
-            <Typography variant="subtitle2" sx={{ 
+                <Typography variant="subtitle2" sx={{ 
               color: orange[600], 
-              fontWeight: 700, 
-              fontFamily: 'Orbitron, sans-serif',
-              fontSize: '0.85rem',
-              flex: 1
-            }}>
+                  fontWeight: 700, 
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '0.85rem',
+                  flex: 1
+                }}>
               Polar Coordinates
-            </Typography>
-            <Typography variant="body2" sx={{ 
+                </Typography>
+                <Typography variant="body2" sx={{ 
               color: showPolarCoordinates ? green[600] : 'gray',
-              fontWeight: 600,
-              fontSize: '0.8rem'
-            }}>
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}>
               {showPolarCoordinates ? 'ON' : 'OFF'}
-            </Typography>
-          </Box>
+                </Typography>
+              </Box>
 
           {/* 極座標on/offボタン */}
           <Box sx={{ display: 'flex', gap: 1, mb: showPolarCoordinates ? 1 : 0 }}>
-            <Button
+                <Button
               variant={showPolarCoordinates ? "contained" : "outlined"}
-              size="small"
+                  size="small"
               onClick={() => {
                 setShowPolarCoordinates(true);
                 // 極座標を有効にする時は世界座標も有効にする
@@ -1445,44 +1460,44 @@ export default function MultiTrackerWithLockOn({
                   setShowWorldCoordinates(true);
                 }
               }}
-              sx={{ 
-                flex: 1,
-                borderColor: orange[600], 
+                  sx={{ 
+                    flex: 1,
+                      borderColor: orange[600], 
                 color: showPolarCoordinates ? 'white' : orange[600],
                 backgroundColor: showPolarCoordinates ? orange[600] : 'transparent',
                 '&:hover': { 
                   borderColor: orange[700], 
                   backgroundColor: showPolarCoordinates ? orange[700] : orange[50] 
-                },
-                fontSize: '0.7rem',
-                py: 0.5
-              }}
-            >
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
               ENABLE
-            </Button>
-            <Button
+                </Button>
+                <Button
               variant={!showPolarCoordinates ? "contained" : "outlined"}
-              size="small"
+                  size="small"
               onClick={() => {
                 setShowPolarCoordinates(false);
                 setCurrentPolarPose(null);
                 setCurrentSphericalPose(null);
               }}
-              sx={{ 
-                flex: 1,
-                borderColor: 'gray', 
+                  sx={{ 
+                    flex: 1,
+                    borderColor: 'gray', 
                 color: !showPolarCoordinates ? 'white' : 'gray',
                 backgroundColor: !showPolarCoordinates ? 'gray' : 'transparent',
-                '&:hover': { 
-                  borderColor: '#666', 
+                    '&:hover': { 
+                      borderColor: '#666', 
                   backgroundColor: !showPolarCoordinates ? '#666' : '#f5f5f5' 
-                },
-                fontSize: '0.7rem',
-                py: 0.5
-              }}
-            >
+                    },
+                    fontSize: '0.7rem',
+                    py: 0.5
+                  }}
+                >
               DISABLE
-            </Button>
+                </Button>
           </Box>
 
           {/* デバッグ情報表示 */}
@@ -1509,7 +1524,7 @@ export default function MultiTrackerWithLockOn({
                   Nose: r={currentPolarPose.nose.r.toFixed(2)}m, 
                   θ={(currentPolarPose.nose.theta * 180/Math.PI).toFixed(1)}°, 
                   φ={(currentPolarPose.nose.phi * 180/Math.PI).toFixed(1)}°
-                </Typography>
+            </Typography>
               )}
               {currentSphericalPose && currentSphericalPose.nose && (
                 <Typography variant="caption" sx={{ 
@@ -1521,7 +1536,7 @@ export default function MultiTrackerWithLockOn({
                   φ={(currentSphericalPose.nose.phi * 180/Math.PI).toFixed(1)}°
                 </Typography>
               )}
-            </Box>
+          </Box>
           )}
         </Card>
 
@@ -1539,8 +1554,8 @@ export default function MultiTrackerWithLockOn({
                   value={selectedCameraId}
                   onChange={(e) => {
                     switchCamera(e.target.value);
-                  }}
-                  sx={{
+              }}
+              sx={{ 
                     '& .MuiSelect-select': {
                       padding: '0.5rem',
                     },
@@ -1552,22 +1567,22 @@ export default function MultiTrackerWithLockOn({
                     </MenuItem>
                   ))}
                 </Select>
-              </Box>
-            </Card>
+          </Box>
+        </Card>
 
             {/* 表示設定セクション */}
             <Card sx={{ background: '#f5f7fa', border: '1.5px solid #e3e3e3', boxShadow: '0 0 8px #e3e3e3', borderRadius: 2, p: 1.5 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Typography variant="subtitle2" sx={{ color: '#555', fontWeight: 700, fontFamily: 'Orbitron, sans-serif', letterSpacing: 1, fontSize: '1.05rem' }}>
                   🎯 Display Settings
-                </Typography>
+                  </Typography>
                 <ToggleButtonGroup
                   exclusive
                   value={showJointAngles ? 'joint_angles' : 'no_joint_angles'}
                   onChange={(_, value) => {
                     setShowJointAngles(value === 'joint_angles');
                   }}
-                  sx={{
+                  sx={{ 
                     '& .MuiToggleButtonGroup-root': {
                       justifyContent: 'space-between',
                     },
@@ -1575,6 +1590,23 @@ export default function MultiTrackerWithLockOn({
                 >
                   <ToggleButton value="joint_angles">Joint Angles</ToggleButton>
                   <ToggleButton value="no_joint_angles">No Joint Angles</ToggleButton>
+                </ToggleButtonGroup>
+                
+                {/* 座標軸表示コントロール */}
+                <ToggleButtonGroup
+                  exclusive
+                  value={showCoordinateAxes ? 'show_axes' : 'hide_axes'}
+                  onChange={(_, value) => {
+                    setShowCoordinateAxes(value === 'show_axes');
+                  }}
+                  sx={{ 
+                    '& .MuiToggleButtonGroup-root': {
+                      justifyContent: 'space-between',
+                    },
+                  }}
+                >
+                  <ToggleButton value="show_axes">XYZ Axes</ToggleButton>
+                  <ToggleButton value="hide_axes">No Axes</ToggleButton>
                 </ToggleButtonGroup>
               </Box>
             </Card>

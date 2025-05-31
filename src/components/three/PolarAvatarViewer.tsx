@@ -5,6 +5,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
+import CoordinateAxes3D from './CoordinateAxes3D';
+import FixedCoordinateAxes from './FixedCoordinateAxes';
 
 interface PolarAvatarProps {
   poseData?: PoseLandmarkerResult | null;
@@ -135,6 +137,7 @@ interface PolarAvatarViewerProps {
   poseData?: PoseLandmarkerResult | null;
   modelPath?: string;
   showGrid?: boolean;
+  showAxes?: boolean;
 }
 
 export default function PolarAvatarViewer({ 
@@ -142,7 +145,8 @@ export default function PolarAvatarViewer({
   height = 300, 
   poseData, 
   modelPath,
-  showGrid = true 
+  showGrid = true,
+  showAxes = true
 }: PolarAvatarViewerProps) {
   return (
     <div style={{ width, height, border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
@@ -156,6 +160,9 @@ export default function PolarAvatarViewer({
         <directionalLight position={[10, 10, 5]} intensity={1.0} castShadow />
         <directionalLight position={[-10, 5, -5]} intensity={0.6} />
         <pointLight position={[0, 5, 0]} intensity={0.3} />
+
+        {/* 🎯 XYZ座標軸 - 最優先で表示 */}
+        {showAxes && <CoordinateAxes3D position={[0, 0.1, 0]} />}
 
         {/* グリッド */}
         {showGrid && (
@@ -188,6 +195,9 @@ export default function PolarAvatarViewer({
 
         {/* 環境 */}
         <Environment preset="sunset" />
+
+        {/* 🎯 固定座標軸 - 画面隅に常時表示 */}
+        {showAxes && <FixedCoordinateAxes size={0.8} position="bottom-left" />}
       </Canvas>
     </div>
   );
