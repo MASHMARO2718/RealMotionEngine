@@ -23,6 +23,8 @@ const ModelViewer = dynamic(
 export default function MultiTrackingPage() {
   const [poseData, setPoseData] = useState<PoseLandmarkerResult | null>(null);
   const [showAxes, setShowAxes] = useState(true);
+  const [showAngles, setShowAngles] = useState(true);
+  const [legCorrectionMode, setLegCorrectionMode] = useState<'full' | 'partial'>('full');
 
   return (
     <Box sx={{ 
@@ -65,6 +67,14 @@ export default function MultiTrackingPage() {
             >
               {showAxes ? "🎯 XYZ軸: ON" : "🎯 XYZ軸: OFF"}
             </Button>
+            <Button
+              variant={showAngles ? "contained" : "outlined"}
+              size="small"
+              onClick={() => setShowAngles(!showAngles)}
+              color={showAngles ? "secondary" : "inherit"}
+            >
+              {showAngles ? "📐 角度弧: ON" : "📐 角度弧: OFF"}
+            </Button>
           </Box>
           
           {/* 3Dモデルビュー */}
@@ -73,6 +83,9 @@ export default function MultiTrackingPage() {
             height={420} 
             poseData={poseData}
             showAxes={showAxes}
+            showAngles={showAngles}
+            legCorrectionMode={legCorrectionMode}
+            onLegCorrectionModeChange={setLegCorrectionMode}
           />
           
           {/* データ分析コンポーネント群 */}

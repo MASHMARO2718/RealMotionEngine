@@ -2,15 +2,18 @@
 
 import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import { Environment, Grid, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { calculateJointRotations } from '../../lib/shared/pose-utils';
-import StickmanModel from './StickmanModel';
+import AngleArcs3D from './AngleArcs3D';
 import CoordinateAxes3D from './CoordinateAxes3D';
 import FixedCoordinateAxes from './FixedCoordinateAxes';
+import StickmanModel from './StickmanModel';
+import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
 
 function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
@@ -407,7 +410,20 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene({ poseData, showAxes = true }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean }) {
+function Scene({ poseData, showAxes = true, showAngles = true }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean }) {
+  const [angleData, setAngleData] = useState<any>(null);
+  const polarRetarget = useRef(new PolarPoseRetarget(0.1));
+
+  // 角度データを更新
+  useEffect(() => {
+    if (poseData) {
+      const angles = polarRetarget.current.calculateAnglesForVisualization(poseData);
+      setAngleData(angles);
+    } else {
+      setAngleData(null);
+    }
+  }, [poseData]);
+
   return (
     <>
       {/* 改善されたライティング */}
@@ -444,6 +460,16 @@ function Scene({ poseData, showAxes = true }: { poseData?: PoseLandmarkerResult 
       }>
         <StickmanModel poseData={poseData} />
       </Suspense>
+
+      {/* 🌟 角度可視化 - 極座標と関節角度の弧 */}
+      {showAngles && (
+        <AngleArcs3D 
+          angleData={angleData} 
+          showPolarAngles={true} 
+          showJointAngles={true}
+          arcRadius={0.08}
+        />
+      )}
       
       <OrbitControls 
         makeDefault 
@@ -464,22 +490,45 @@ interface ModelViewerProps {
   height?: number;
   poseData?: PoseLandmarkerResult | null;
   showAxes?: boolean;
+  showAngles?: boolean;
+  legCorrectionMode?: 'full' | 'partial';
+  onLegCorrectionModeChange?: (mode: 'full' | 'partial') => void;
 }
 
-export default function ModelViewer({ width = 560, height = 420, poseData, showAxes }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
+      {/* 脚補正モード切り替えボタン */}
+      {onLegCorrectionModeChange && (
+        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => onLegCorrectionModeChange(legCorrectionMode === 'full' ? 'partial' : 'full')}
+            sx={{ 
+              fontSize: '12px',
+              minWidth: 'auto',
+              bgcolor: legCorrectionMode === 'full' ? '#ff5722' : '#ffc107',
+              '&:hover': {
+                bgcolor: legCorrectionMode === 'full' ? '#d84315' : '#ff9800'
+              }
+            }}
+          >
+            🦵 脚補正: {legCorrectionMode === 'full' ? '180°' : '80°'}
+          </Button>
+        </Box>
+      )}
+      
       <Canvas
         camera={{ 
-          position: [5, 3, 5], 
-          fov: 60,
+          position: [0, 1, 3], 
+          fov: 50,
           near: 0.1,
-          far: 1000
+          far: 100
         }}
-        style={{ background: '#f5f5f5' }}
-        shadows
+        style={{ background: '#000814' }}
       >
-        <Scene poseData={poseData} showAxes={showAxes} />
+        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} />
       </Canvas>
     </Box>
   );
