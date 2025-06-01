@@ -17,6 +17,10 @@ export class PolarPoseRetarget {
     this.legCorrectionMode = legCorrectionMode;
   }
 
+  setSmoothingFactor(factor: number) {
+    this.smoothingFactor = Math.max(0, Math.min(1, factor));
+  }
+
   /**
    * 床法線ベクトルを設定
    */
@@ -34,12 +38,26 @@ export class PolarPoseRetarget {
   }
 
   /**
+   * 現在の補正モードを取得
+   */
+  getLegCorrectionMode(): 'full' | 'partial' {
+    return this.legCorrectionMode;
+  }
+
+  /**
    * 角度調整値を設定
    * @param adjustments 各関節のomega/phi調整値（度数）
    */
   setAngleAdjustments(adjustments: Record<string, { omega: number; phi: number }>) {
-    this.angleAdjustments = adjustments;
-    console.log('🎛️ 角度調整値を更新:', adjustments);
+    this.angleAdjustments = { ...adjustments };
+    console.log('🎛️ 角度調整値が更新されました:', this.angleAdjustments);
+  }
+
+  /**
+   * 角度調整値を取得
+   */
+  getAngleAdjustments(): Record<string, { omega: number; phi: number }> {
+    return { ...this.angleAdjustments };
   }
 
   /**
@@ -528,6 +546,179 @@ export class PolarPoseRetarget {
     } catch (error) {
       console.warn('Angle calculation error:', error);
       return { polarAngles: {}, jointAngles: {} };
+    }
+  }
+
+  // T-poseかどうかを検出
+  detectTPose(landmarks: any[]): boolean {
+    if (!landmarks || landmarks.length < 33) return false;
+
+    try {
+      // 左肩、右肩、左肘、右肘、左手首、右手首の座標を取得
+      const leftShoulder = landmarks[11];
+      const rightShoulder = landmarks[12];
+      const leftElbow = landmarks[13];
+      const rightElbow = landmarks[14];
+      const leftWrist = landmarks[15];
+      const rightWrist = landmarks[16];
+
+      // 基本的な可視性チェック
+      if (!leftShoulder || !rightShoulder || !leftElbow || !rightElbow || !leftWrist || !rightWrist) {
+        return false;
+      }
+
+      // 肩の幅（水平度チェック）
+      const shoulderYDiff = Math.abs(leftShoulder.y - rightShoulder.y);
+      if (shoulderYDiff > 0.05) return false; // 5%以上の高低差はNG
+
+      // 腕が水平に伸びているかチェック
+      const leftArmHorizontal = Math.abs(leftElbow.y - leftShoulder.y) < 0.08; // 8%以内
+      const rightArmHorizontal = Math.abs(rightElbow.y - rightShoulder.y) < 0.08;
+      
+      // 手首も水平ラインにあるかチェック
+      const leftWristHorizontal = Math.abs(leftWrist.y - leftShoulder.y) < 0.1; // 10%以内
+      const rightWristHorizontal = Math.abs(rightWrist.y - rightShoulder.y) < 0.1;
+
+      // 腕が外側に伸びているかチェック
+      const leftArmExtended = leftWrist.x < leftElbow.x && leftElbow.x < leftShoulder.x;
+      const rightArmExtended = rightWrist.x > rightElbow.x && rightElbow.x > rightShoulder.x;
+
+      const isTPose = leftArmHorizontal && rightArmHorizontal && 
+                     leftWristHorizontal && rightWristHorizontal &&
+                     leftArmExtended && rightArmExtended;
+
+      return isTPose;
+    } catch (error) {
+      console.warn('T-pose detection error:', error);
+      return false;
+    }
+  }
+
+  // オートチューニング用の補正値を計算
+  calculateAutoTuningAdjustments(tposeSamples: PoseLandmarkerResult[]): Record<string, { omega: number; phi: number }> {
+    if (tposeSamples.length === 0) {
+      console.warn('T-poseサンプルがありません');
+      return {};
+    }
+
+    console.log(`🎯 ${tposeSamples.length}個のT-poseサンプルから補正値を自動計算中...`);
+
+    // 理想的なT-pose角度を定義
+    const idealTPoseAngles: Record<string, { omega: number; phi: number }> = {
+      leftShoulder: { omega: 90, phi: 0 },    // 左腕を水平に
+      rightShoulder: { omega: -90, phi: 0 },  // 右腕を水平に
+      leftElbow: { omega: 0, phi: 0 },        // 肘は真っ直ぐ
+      rightElbow: { omega: 0, phi: 0 },       // 肘は真っ直ぐ
+      leftWrist: { omega: 0, phi: 0 },        // 手首は自然に
+      rightWrist: { omega: 0, phi: 0 },       // 手首は自然に
+      leftHip: { omega: 0, phi: 0 },          // 腰は中立
+      rightHip: { omega: 0, phi: 0 },         // 腰は中立
+      leftKnee: { omega: 0, phi: 0 },         // 膝は真っ直ぐ
+      rightKnee: { omega: 0, phi: 0 },        // 膝は真っ直ぐ
+      leftAnkle: { omega: 0, phi: 0 },        // 足首は中立
+      rightAnkle: { omega: 0, phi: 0 },       // 足首は中立
+    };
+
+    // 各サンプルから極座標を計算し、平均を取る
+    const averageAngles: Record<string, { omega: number; phi: number; count: number }> = {};
+
+    tposeSamples.forEach((sample) => {
+      const landmarks = sample.landmarks[0];
+      if (!landmarks) return;
+
+      // 胴体平面を計算
+      const torsoPlane = this.calculateTorsoPlane(landmarks);
+      
+      // 各関節の極座標を計算
+      const jointDefinitions = [
+        { name: 'leftShoulder', from: 11, to: 13 },   // 肩→肘
+        { name: 'rightShoulder', from: 12, to: 14 },  // 肩→肘
+        { name: 'leftElbow', from: 13, to: 15 },      // 肘→手首
+        { name: 'rightElbow', from: 14, to: 16 },     // 肘→手首
+        { name: 'leftWrist', from: 15, to: 17 },      // 手首→親指
+        { name: 'rightWrist', from: 16, to: 18 },     // 手首→親指
+        { name: 'leftHip', from: 23, to: 25 },        // 腰→膝
+        { name: 'rightHip', from: 24, to: 26 },       // 腰→膝
+        { name: 'leftKnee', from: 25, to: 27 },       // 膝→足首
+        { name: 'rightKnee', from: 26, to: 28 },      // 膝→足首
+        { name: 'leftAnkle', from: 27, to: 29 },      // 足首→かかと
+        { name: 'rightAnkle', from: 28, to: 30 },     // 足首→かかと
+      ];
+
+      jointDefinitions.forEach(({ name, from, to }) => {
+        if (landmarks[from] && landmarks[to]) {
+          const fromPoint = this.landmarkToVector3(landmarks[from]);
+          const toPoint = this.landmarkToVector3(landmarks[to]);
+          const direction = toPoint.clone().sub(fromPoint).normalize();
+          
+          const polarCoords = this.calculateTorsoBasedPolarCoordinates(
+            fromPoint.clone().add(direction),
+            torsoPlane
+          );
+
+          if (!averageAngles[name]) {
+            averageAngles[name] = { omega: 0, phi: 0, count: 0 };
+          }
+          
+          averageAngles[name].omega += polarCoords.omega;
+          averageAngles[name].phi += polarCoords.phi;
+          averageAngles[name].count++;
+        }
+      });
+    });
+
+    // 平均を計算
+    Object.keys(averageAngles).forEach(joint => {
+      const avg = averageAngles[joint];
+      if (avg.count > 0) {
+        avg.omega /= avg.count;
+        avg.phi /= avg.count;
+      }
+    });
+
+    // 補正値を計算（理想 - 実際）
+    const adjustments: Record<string, { omega: number; phi: number }> = {};
+    Object.keys(idealTPoseAngles).forEach(joint => {
+      const ideal = idealTPoseAngles[joint];
+      const actual = averageAngles[joint] || { omega: 0, phi: 0, count: 0 };
+      
+      adjustments[joint] = {
+        omega: ideal.omega - actual.omega,
+        phi: ideal.phi - actual.phi
+      };
+    });
+
+    console.log('🎛️ 自動計算された補正値:', adjustments);
+    return adjustments;
+  }
+
+  // T-poseベースの自動チューニングを実行
+  performAutoTuning(tposeSamples: PoseLandmarkerResult[]): boolean {
+    try {
+      // T-poseサンプルの検証
+      const validSamples = tposeSamples.filter(sample => {
+        const landmarks = sample.landmarks?.[0];
+        return landmarks && this.detectTPose(landmarks);
+      });
+
+      if (validSamples.length === 0) {
+        console.warn('有効なT-poseサンプルがありません');
+        return false;
+      }
+
+      console.log(`✅ ${validSamples.length}個の有効なT-poseサンプルが見つかりました`);
+
+      // 補正値を計算
+      const autoAdjustments = this.calculateAutoTuningAdjustments(validSamples);
+      
+      // 補正値を適用
+      this.setAngleAdjustments(autoAdjustments);
+
+      console.log('🎉 オートチューニングが完了しました！');
+      return true;
+    } catch (error) {
+      console.error('オートチューニング中にエラーが発生しました:', error);
+      return false;
     }
   }
 }

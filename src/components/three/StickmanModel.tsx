@@ -12,14 +12,25 @@ import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
 interface StickmanModelProps {
   poseData?: PoseLandmarkerResult | null;
   angleAdjustments?: Record<string, { omega: number; phi: number }>;
+  poseRetarget?: PolarPoseRetarget; // 外部から渡されるPolarPoseRetargetインスタンス
 }
 
-export default function StickmanModel({ poseData, angleAdjustments }: StickmanModelProps) {
+export default function StickmanModel({ poseData, angleAdjustments, poseRetarget }: StickmanModelProps) {
   const groupRef = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/models/Y-bot.glb');
   const [modelLoaded, setModelLoaded] = useState(false);
   const [bones, setBones] = useState<THREE.Object3D[]>([]);
-  const polarRetarget = useRef(new PolarPoseRetarget(0.1)); // PolarPoseRetargetインスタンス
+  
+  // 外部から渡されたposeRetargetを使用、なければフォールバック用のインスタンスを作成
+  const polarRetargetRef = useRef<PolarPoseRetarget>(poseRetarget || new PolarPoseRetarget(0.1));
+
+  // poseRetargetプロパティが変更された時の処理
+  useEffect(() => {
+    if (poseRetarget) {
+      polarRetargetRef.current = poseRetarget;
+      console.log('🔄 StickmanModel: 外部PolarPoseRetargetインスタンスを使用');
+    }
+  }, [poseRetarget]);
 
   // Y-bot モデル初期化
   useEffect(() => {
@@ -121,11 +132,11 @@ export default function StickmanModel({ poseData, angleAdjustments }: StickmanMo
     try {
       // 角度調整値を適用
       if (angleAdjustments) {
-        polarRetarget.current.setAngleAdjustments(angleAdjustments);
+        polarRetargetRef.current.setAngleAdjustments(angleAdjustments);
       }
       
       // PolarPoseRetargetで計算（角度調整が適用される）
-      const rotations = polarRetarget.current.calculateJointRotations(poseData);
+      const rotations = polarRetargetRef.current.calculateJointRotations(poseData);
       if (!rotations) return;
 
       console.log(`🎯 ${Object.keys(rotations).length}個の関節データ受信（角度調整適用済み）`);

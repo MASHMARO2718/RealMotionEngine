@@ -1,14 +1,19 @@
 'use client';
 
 import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
+import { Checkbox, FormControlLabel } from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
 import BodyDataAnalyzer from '../../components/analysis/BodyDataAnalyzer';
 import JointAngleAnalyzer from '../../components/analysis/JointAngleAnalyzer';
 import AngleAdjustmentPanel from '../../components/controls/AngleAdjustmentPanel';
+import AutoTuningPanel from '../../components/controls/AutoTuningPanel';
+import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
 
 // クライアントサイドのみでレンダリングする必要がある
 const MultiTrackerWithLockOn = dynamic(
@@ -27,6 +32,28 @@ export default function MultiTrackingPage() {
   const [showAngles, setShowAngles] = useState(true);
   const [legCorrectionMode, setLegCorrectionMode] = useState<'full' | 'partial'>('full');
   const [angleAdjustments, setAngleAdjustments] = useState<Record<string, { omega: number; phi: number }>>({});
+  const [poseRetarget] = useState(() => new PolarPoseRetarget(0.1, 'full'));
+  const [autoTuningEnabled, setAutoTuningEnabled] = useState(false);
+
+  // 脚補正モード変更時の処理
+  const handleLegCorrectionModeChange = (mode: 'full' | 'partial') => {
+    setLegCorrectionMode(mode);
+    poseRetarget.setLegCorrectionMode(mode);
+  };
+
+  // 角度調整値変更時の処理
+  const handleAngleAdjustmentChange = (adjustments: Record<string, { omega: number; phi: number }>) => {
+    setAngleAdjustments(adjustments);
+    poseRetarget.setAngleAdjustments(adjustments);
+  };
+
+  // オートチューニング完了時の処理
+  const handleAutoTuningComplete = (adjustments: Record<string, { omega: number; phi: number }>) => {
+    console.log('🎉 オートチューニング完了！適用された補正値:', adjustments);
+    setAngleAdjustments(adjustments);
+    // 確実に同じインスタンスに補正値を適用
+    poseRetarget.setAngleAdjustments(adjustments);
+  };
 
   return (
     <Box sx={{ 
@@ -37,7 +64,7 @@ export default function MultiTrackingPage() {
       background: '#fff'
     }}>
       <Box sx={{ 
-        display: 'flex', 
+        display: 'flex',
         flexDirection: 'row', 
         p: 4, 
         pl: 12, 
@@ -56,7 +83,7 @@ export default function MultiTrackingPage() {
             lockOnEnabled={true}
           />
         </Box>
-        
+
         {/* 中央：3Dモデルビューとデータ分析 */}
         <Box sx={{ width: 680, minWidth: 680, maxWidth: 680, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           {/* 3D表示制御 */}
@@ -77,20 +104,35 @@ export default function MultiTrackingPage() {
             >
               {showAngles ? "📐 角度弧: ON" : "📐 角度弧: OFF"}
             </Button>
+            <Button
+              variant={autoTuningEnabled ? "contained" : "outlined"}
+              size="small"
+              onClick={() => setAutoTuningEnabled(!autoTuningEnabled)}
+              color={autoTuningEnabled ? "success" : "inherit"}
+              sx={{ 
+                bgcolor: autoTuningEnabled ? '#4caf50' : 'transparent',
+                '&:hover': { 
+                  bgcolor: autoTuningEnabled ? '#388e3c' : '#f5f5f5' 
+                }
+              }}
+            >
+              {autoTuningEnabled ? "🎯 オートチューニング: ON" : "🎯 オートチューニング: OFF"}
+            </Button>
           </Box>
           
           {/* 3Dモデルビュー */}
-          <ModelViewer 
+          <ModelViewer
             width={680} 
-            height={420} 
+            height={420}
             poseData={poseData}
             showAxes={showAxes}
             showAngles={showAngles}
             legCorrectionMode={legCorrectionMode}
-            onLegCorrectionModeChange={setLegCorrectionMode}
+            onLegCorrectionModeChange={handleLegCorrectionModeChange}
             angleAdjustments={angleAdjustments}
+            poseRetarget={poseRetarget}
           />
-          
+
           {/* データ分析コンポーネント群 */}
           <Box sx={{ 
             width: '100%', 
@@ -118,12 +160,23 @@ export default function MultiTrackingPage() {
         </Box>
 
         {/* 右側：角度調整パネル */}
-        <Box sx={{ width: 280, minWidth: 280, maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <AngleAdjustmentPanel 
+        <Box sx={{ width: 280, minWidth: 280, maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <AngleAdjustmentPanel
             width={280}
-            height={800}
-            onAdjustmentChange={setAngleAdjustments}
+            height={400}
+            onAdjustmentChange={handleAngleAdjustmentChange}
           />
+          
+          {/* オートチューニングパネル */}
+          {autoTuningEnabled && (
+            <AutoTuningPanel
+              width={280}
+              height={380}
+              poseData={poseData}
+              poseRetarget={poseRetarget}
+              onTuningComplete={handleAutoTuningComplete}
+            />
+          )}
         </Box>
       </Box>
     </Box>

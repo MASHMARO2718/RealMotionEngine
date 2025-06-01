@@ -646,11 +646,15 @@ export default function MultiTrackerWithLockOn({
     if (!videoRef.current) return;
     
     try {
-      // 既存のストリームを停止
+      console.log('📷 カメラセットアップ開始:', { selectedCameraId, width, height });
+      
+      // 既存のストリームがある場合は停止
       if (videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
         videoRef.current.srcObject = null;
+        // ストリーム停止後に少し待機
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
       const constraints: MediaStreamConstraints = {
@@ -667,33 +671,100 @@ export default function MultiTrackerWithLockOn({
       };
       
       console.log('📷 カメラ制約:', constraints);
+      
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('✅ ストリーム取得成功');
+      
       videoRef.current.srcObject = stream;
-      videoRef.current.onloadedmetadata = () => {
-        if (videoRef.current && canvasRef.current) {
-          canvasRef.current.width = videoRef.current.videoWidth;
-          canvasRef.current.height = videoRef.current.videoHeight;
-          videoRef.current.play().then(() => {
-            setIsRunning(true);
-          });
+      
+      // loadedmetadataイベントを待機
+      await new Promise<void>((resolve, reject) => {
+        if (!videoRef.current) {
+          reject(new Error('Video element not found'));
+          return;
         }
-      };
+        
+        const video = videoRef.current;
+        
+        const onLoadedMetadata = () => {
+          console.log('📷 メタデータ読み込み完了');
+          if (canvasRef.current) {
+            canvasRef.current.width = video.videoWidth;
+            canvasRef.current.height = video.videoHeight;
+            console.log('🎨 キャンバスサイズ設定:', { 
+              width: video.videoWidth, 
+              height: video.videoHeight 
+            });
+          }
+          video.removeEventListener('loadedmetadata', onLoadedMetadata);
+          resolve();
+        };
+        
+        const onError = (error: Event) => {
+          console.error('❌ ビデオエラー:', error);
+          video.removeEventListener('error', onError);
+          reject(new Error('Video loading error'));
+        };
+        
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('error', onError);
+        
+        // タイムアウト設定
+        setTimeout(() => {
+          video.removeEventListener('loadedmetadata', onLoadedMetadata);
+          video.removeEventListener('error', onError);
+          reject(new Error('Video loading timeout'));
+        }, 5000);
+      });
+      
+      // 動画の再生を開始
+      await videoRef.current.play();
+      console.log('▶️ 動画再生開始');
+      
+      // 実際に映像が流れ始めるまで少し待機
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setIsRunning(true);
+      console.log('✅ カメラセットアップ完了');
+      
     } catch (err) {
-      setError('Camera error: ' + (err instanceof Error ? err.message : String(err)));
+      const errorMessage = 'Camera error: ' + (err instanceof Error ? err.message : String(err));
+      setError(errorMessage);
       console.error('📷 カメラ初期化エラー:', err);
     }
   }, [width, height, selectedCameraId]);
 
   // 🎥 カメラ切り替え関数
   const switchCamera = useCallback(async (deviceId: string) => {
-    console.log('📷 カメラ切り替え:', deviceId);
-    setSelectedCameraId(deviceId);
+    console.log('📷 カメラ切り替え開始:', deviceId);
+    
+    // まず現在の状態を停止
     setIsRunning(false);
     
-    // 少し待ってからカメラを再初期化
+    // 既存のストリームを完全に停止
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => {
+        track.stop();
+        console.log('🛑 Track stopped:', track.label);
+      });
+      videoRef.current.srcObject = null;
+    }
+    
+    // カメラIDを更新
+    setSelectedCameraId(deviceId);
+    
+    // より長い遅延を設けてからカメラを再初期化
     setTimeout(async () => {
-      await setupCamera();
-    }, 100);
+      console.log('🔄 カメラ再初期化開始');
+      try {
+        await setupCamera();
+        console.log('✅ カメラ切り替え完了');
+      } catch (error) {
+        console.error('❌ カメラ切り替え失敗:', error);
+        setError('カメラ切り替えに失敗しました: ' + (error instanceof Error ? error.message : String(error)));
+      }
+    }, 500); // 100msから500msに延長
   }, [setupCamera]);
 
   const runTracking = useCallback((timestamp: number) => {

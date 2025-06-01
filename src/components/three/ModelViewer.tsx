@@ -9,11 +9,11 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { calculateJointRotations } from '../../lib/shared/pose-utils';
+import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
 import AngleArcs3D from './AngleArcs3D';
 import CoordinateAxes3D from './CoordinateAxes3D';
 import FixedCoordinateAxes from './FixedCoordinateAxes';
 import StickmanModel from './StickmanModel';
-import { PolarPoseRetarget } from '../../three/PolarPoseRetarget';
 
 function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }) {
   const group = useRef<THREE.Group>(null);
@@ -410,14 +410,24 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean; angleAdjustments?: Record<string, { omega: number; phi: number }> }) {
+function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments, poseRetarget }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean; angleAdjustments?: Record<string, { omega: number; phi: number }>; poseRetarget?: PolarPoseRetarget }) {
   const [angleData, setAngleData] = useState<any>(null);
-  const polarRetarget = useRef(new PolarPoseRetarget(0.1));
+  const retargeter = useRef(new PolarPoseRetarget());
+
+  useEffect(() => {
+    if (poseData) {
+      // ポーズデータの解析ログ
+      console.log('🎬 Scene: ポーズデータ受信:', {
+        landmarks: poseData.landmarks?.length || 0,
+        worldLandmarks: poseData.worldLandmarks?.length || 0
+      });
+    }
+  }, [poseData]);
 
   // 角度データを更新
   useEffect(() => {
     if (poseData) {
-      const angles = polarRetarget.current.calculateAnglesForVisualization(poseData);
+      const angles = retargeter.current.calculateAnglesForVisualization(poseData);
       setAngleData(angles);
     } else {
       setAngleData(null);
@@ -426,16 +436,16 @@ function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments 
 
   // ポーズデータをリアルタイムで処理
   useFrame(() => {
-    if (poseData && polarRetarget.current) {
+    if (poseData && retargeter.current) {
       try {
         // 角度調整値を適用
         if (angleAdjustments) {
-          polarRetarget.current.setAngleAdjustments(angleAdjustments);
+          retargeter.current.setAngleAdjustments(angleAdjustments);
         }
         
         // ポーズ分析と角度計算
-        const analysis = polarRetarget.current.analyzePose(poseData);
-        const calculatedAngleData = polarRetarget.current.calculateAnglesForVisualization(poseData);
+        const analysis = retargeter.current.analyzePose(poseData);
+        const calculatedAngleData = retargeter.current.calculateAnglesForVisualization(poseData);
         
         setAngleData(calculatedAngleData);
         
@@ -448,8 +458,8 @@ function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments 
   return (
     <>
       {/* 改善されたライティング */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 5]} intensity={1.0} castShadow />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={1} />
       <directionalLight position={[-10, 5, -5]} intensity={0.6} />
       <directionalLight position={[0, -5, 0]} intensity={0.4} />
       <pointLight position={[0, 5, 0]} intensity={0.3} color={0xffffff} />
@@ -479,7 +489,11 @@ function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments 
           <meshStandardMaterial color="orange" />
         </mesh>
       }>
-        <StickmanModel poseData={poseData} angleAdjustments={angleAdjustments} />
+        <StickmanModel 
+          poseData={poseData} 
+          angleAdjustments={angleAdjustments}
+          poseRetarget={poseRetarget}
+        />
       </Suspense>
 
       {/* 🌟 角度可視化 - 極座標と関節角度の弧 */}
@@ -515,9 +529,10 @@ interface ModelViewerProps {
   legCorrectionMode?: 'full' | 'partial';
   onLegCorrectionModeChange?: (mode: 'full' | 'partial') => void;
   angleAdjustments?: Record<string, { omega: number; phi: number }>;
+  poseRetarget?: PolarPoseRetarget;
 }
 
-export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange, angleAdjustments }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange, angleAdjustments, poseRetarget }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       {/* 脚補正モード切り替えボタン */}
@@ -550,7 +565,7 @@ export default function ModelViewer({ width = 560, height = 420, poseData, showA
         }}
         style={{ background: '#000814' }}
       >
-        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} angleAdjustments={angleAdjustments} />
+        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} angleAdjustments={angleAdjustments} poseRetarget={poseRetarget} />
       </Canvas>
     </Box>
   );
