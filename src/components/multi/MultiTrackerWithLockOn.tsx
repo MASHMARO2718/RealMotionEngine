@@ -758,7 +758,7 @@ export default function MultiTrackerWithLockOn({
     setTimeout(async () => {
       console.log('🔄 カメラ再初期化開始');
       try {
-        await setupCamera();
+      await setupCamera();
         console.log('✅ カメラ切り替え完了');
       } catch (error) {
         console.error('❌ カメラ切り替え失敗:', error);

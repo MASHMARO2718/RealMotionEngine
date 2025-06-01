@@ -410,7 +410,7 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments, poseRetarget }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean; angleAdjustments?: Record<string, { omega: number; phi: number }>; poseRetarget?: PolarPoseRetarget }) {
+function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments, poseRetarget, isTuned = false }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean; angleAdjustments?: Record<string, { omega: number; phi: number }>; poseRetarget?: PolarPoseRetarget; isTuned?: boolean }) {
   const [angleData, setAngleData] = useState<any>(null);
   const retargeter = useRef(new PolarPoseRetarget());
 
@@ -493,6 +493,7 @@ function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments,
           poseData={poseData} 
           angleAdjustments={angleAdjustments}
           poseRetarget={poseRetarget}
+          isTuned={isTuned}
         />
       </Suspense>
 
@@ -530,9 +531,10 @@ interface ModelViewerProps {
   onLegCorrectionModeChange?: (mode: 'full' | 'partial') => void;
   angleAdjustments?: Record<string, { omega: number; phi: number }>;
   poseRetarget?: PolarPoseRetarget;
+  isTuned?: boolean;
 }
 
-export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange, angleAdjustments, poseRetarget }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange, angleAdjustments, poseRetarget, isTuned = false }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       {/* 脚補正モード切り替えボタン */}
@@ -565,7 +567,7 @@ export default function ModelViewer({ width = 560, height = 420, poseData, showA
         }}
         style={{ background: '#000814' }}
       >
-        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} angleAdjustments={angleAdjustments} poseRetarget={poseRetarget} />
+        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} angleAdjustments={angleAdjustments} poseRetarget={poseRetarget} isTuned={isTuned} />
       </Canvas>
     </Box>
   );

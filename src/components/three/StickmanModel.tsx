@@ -1,9 +1,10 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { calculateJointRotations } from '../../lib/shared/pose-utils';
@@ -13,13 +14,15 @@ interface StickmanModelProps {
   poseData?: PoseLandmarkerResult | null;
   angleAdjustments?: Record<string, { omega: number; phi: number }>;
   poseRetarget?: PolarPoseRetarget; // 外部から渡されるPolarPoseRetargetインスタンス
+  isTuned?: boolean; // チューニング完了フラグ
 }
 
-export default function StickmanModel({ poseData, angleAdjustments, poseRetarget }: StickmanModelProps) {
+export default function StickmanModel({ poseData, angleAdjustments, poseRetarget, isTuned = false }: StickmanModelProps) {
   const groupRef = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/models/Y-bot.glb');
   const [modelLoaded, setModelLoaded] = useState(false);
   const [bones, setBones] = useState<THREE.Object3D[]>([]);
+  const [isTPoseSet, setIsTPoseSet] = useState(false);
   
   // 外部から渡されたposeRetargetを使用、なければフォールバック用のインスタンスを作成
   const polarRetargetRef = useRef<PolarPoseRetarget>(poseRetarget || new PolarPoseRetarget(0.1));
@@ -31,6 +34,93 @@ export default function StickmanModel({ poseData, angleAdjustments, poseRetarget
       console.log('🔄 StickmanModel: 外部PolarPoseRetargetインスタンスを使用');
     }
   }, [poseRetarget]);
+
+  // T-poseを設定する関数
+  const setTPose = useCallback(() => {
+    if (!bones.length) return;
+
+    console.log('🎯 アバターをT-poseに設定中...');
+    console.log('📊 利用可能なボーン数:', bones.length);
+    
+    // 全ボーン名をログ出力
+    bones.forEach((bone, index) => {
+      console.log(`  [${index}] ${bone.name}`);
+    });
+
+    // 複数の回転軸パターンをテスト
+    const tPoseRotationPatterns = {
+      // パターン1: Z軸回転 (現在)
+      pattern1: {
+        'mixamorigLeftArm': new THREE.Euler(0, 0, Math.PI / 2),
+        'mixamorigRightArm': new THREE.Euler(0, 0, -Math.PI / 2),
+      },
+      // パターン2: Y軸回転
+      pattern2: {
+        'mixamorigLeftArm': new THREE.Euler(0, Math.PI / 2, 0),
+        'mixamorigRightArm': new THREE.Euler(0, -Math.PI / 2, 0),
+      },
+      // パターン3: X軸回転
+      pattern3: {
+        'mixamorigLeftArm': new THREE.Euler(Math.PI / 2, 0, 0),
+        'mixamorigRightArm': new THREE.Euler(-Math.PI / 2, 0, 0),
+      },
+      // パターン4: 複合回転
+      pattern4: {
+        'mixamorigLeftArm': new THREE.Euler(0, 0, Math.PI / 2),
+        'mixamorigRightArm': new THREE.Euler(0, Math.PI, -Math.PI / 2),
+      }
+    };
+
+    // 現在はパターン1でテスト、後で他のパターンも試せるように
+    const selectedPattern = tPoseRotationPatterns.pattern1;
+
+    console.log('🔧 T-pose回転パターン適用中...');
+    
+    Object.entries(selectedPattern).forEach(([boneName, rotation]) => {
+      // より柔軟なボーン検索
+      const targetBone = bones.find(bone => 
+        bone.name === boneName || 
+        bone.name.includes('LeftArm') || 
+        bone.name.includes('RightArm') ||
+        bone.name.toLowerCase().includes('leftarm') ||
+        bone.name.toLowerCase().includes('rightarm')
+      );
+
+      if (targetBone) {
+        console.log(`🔄 ボーン発見: "${targetBone.name}" → 回転適用`);
+        console.log(`   適用前回転:`, targetBone.rotation.x.toFixed(3), targetBone.rotation.y.toFixed(3), targetBone.rotation.z.toFixed(3));
+        
+        // 回転適用
+        targetBone.rotation.copy(rotation);
+        targetBone.updateMatrixWorld(true);
+        
+        console.log(`   適用後回転:`, targetBone.rotation.x.toFixed(3), targetBone.rotation.y.toFixed(3), targetBone.rotation.z.toFixed(3));
+        console.log(`✅ ${targetBone.name} T-pose設定完了`);
+      } else {
+        console.warn(`❌ ボーンが見つかりません: ${boneName}`);
+        console.log('🔍 類似ボーン検索結果:');
+        bones.filter(bone => 
+          bone.name.toLowerCase().includes('arm') || 
+          bone.name.toLowerCase().includes('shoulder')
+        ).forEach(bone => {
+          console.log(`  候補: "${bone.name}"`);
+        });
+      }
+    });
+
+    setIsTPoseSet(true);
+    console.log('🎉 T-pose設定完了！');
+  }, [bones]);
+
+  // モデル読み込み完了時にT-poseを設定
+  useEffect(() => {
+    if (modelLoaded && bones.length > 0 && !isTPoseSet) {
+      // 少し遅延してからT-poseを設定（ボーンの初期化完了を待つ）
+      setTimeout(() => {
+        setTPose();
+      }, 100);
+    }
+  }, [modelLoaded, bones.length, isTPoseSet, setTPose]);
 
   // Y-bot モデル初期化
   useEffect(() => {
@@ -125,7 +215,26 @@ export default function StickmanModel({ poseData, angleAdjustments, poseRetarget
 
   // MediaPipe連携アニメーション
   useFrame(() => {
-    if (!modelLoaded || !poseData || !poseData.landmarks || poseData.landmarks.length === 0 || bones.length === 0) {
+    // ❌ チューニングが完了していない場合でも、手動調整は反映させる
+    if (!modelLoaded || bones.length === 0) {
+      return;
+    }
+
+    // 🔧 手動角度調整のみ適用（チューニング状態に関わらず）
+    if (angleAdjustments && Object.keys(angleAdjustments).length > 0) {
+      // 手動調整値をPolarPoseRetargetに適用
+      polarRetargetRef.current.setAngleAdjustments(angleAdjustments);
+      console.log('🎛️ 手動角度調整を適用:', angleAdjustments);
+    }
+
+    // ⚠️ チューニングが完了していない場合は、自動ポーズトラッキングを無効にする
+    if (!isTuned) {
+      // T-poseを維持（手動調整は上記のuseEffectで処理される）
+      return; // 自動ポーズトラッキングは無効
+    }
+
+    // ✅ チューニング完了済みの場合のみ、自動ポーズトラッキングを実行
+    if (!poseData || !poseData.landmarks || poseData.landmarks.length === 0) {
       return;
     }
 
@@ -228,6 +337,73 @@ export default function StickmanModel({ poseData, angleAdjustments, poseRetarget
       console.error('❌ アニメーションエラー:', error);
     }
   });
+
+  // T-poseに手動調整を適用する関数
+  const applyManualAdjustmentsToTPose = useCallback(() => {
+    if (!bones.length || !angleAdjustments || Object.keys(angleAdjustments).length === 0) return;
+
+    console.log('🎛️ T-poseに手動調整を適用中...', angleAdjustments);
+
+    // 基本のT-pose回転を設定
+    const baseTposeRotations = {
+      'mixamorigLeftArm': new THREE.Euler(0, 0, Math.PI / 2),
+      'mixamorigRightArm': new THREE.Euler(0, 0, -Math.PI / 2),
+    };
+
+    Object.entries(baseTposeRotations).forEach(([boneName, baseRotation]) => {
+      const targetBone = bones.find(bone => 
+        bone.name === boneName || 
+        bone.name.includes('LeftArm') || 
+        bone.name.includes('RightArm')
+      );
+
+      if (targetBone) {
+        // ベース回転を適用
+        let finalRotation = new THREE.Quaternion().setFromEuler(baseRotation);
+        
+        // 手動調整を追加
+        const jointMapping = boneName.includes('Left') ? 'leftShoulder' : 'rightShoulder';
+        const adjustment = angleAdjustments[jointMapping];
+        
+        if (adjustment) {
+          // Omega調整（Z軸回転）
+          if (adjustment.omega !== 0) {
+            const omegaRotation = new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(0, 0, 1), 
+              adjustment.omega * Math.PI / 180
+            );
+            finalRotation = finalRotation.multiply(omegaRotation);
+          }
+
+          // Phi調整（X軸回転）
+          if (adjustment.phi !== 0) {
+            const phiRotation = new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(1, 0, 0), 
+              adjustment.phi * Math.PI / 180
+            );
+            finalRotation = finalRotation.multiply(phiRotation);
+          }
+          
+          console.log(`🔧 ${jointMapping}に調整適用: omega=${adjustment.omega}°, phi=${adjustment.phi}°`);
+        }
+
+        // 回転を適用
+        targetBone.quaternion.copy(finalRotation);
+        targetBone.updateMatrixWorld(true);
+        
+        console.log(`✅ ${targetBone.name}にT-pose+手動調整を適用`);
+      }
+    });
+  }, [bones, angleAdjustments]);
+
+  // 角度調整値が変更されたときの処理
+  useEffect(() => {
+    if (angleAdjustments && Object.keys(angleAdjustments).length > 0 && !isTuned && isTPoseSet) {
+      // チューニング前の状態で角度調整が変更された場合、T-poseに反映
+      console.log('🔄 角度調整が変更されました。T-poseに適用します。');
+      applyManualAdjustmentsToTPose();
+    }
+  }, [angleAdjustments, isTuned, isTPoseSet, applyManualAdjustmentsToTPose]);
 
   return (
     <group ref={groupRef}>

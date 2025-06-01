@@ -84,6 +84,17 @@ export class PolarPoseRetarget {
    */
   private applyRotationAdjustments(jointName: string, rotation: THREE.Quaternion): THREE.Quaternion {
     const adjustment = this.angleAdjustments[jointName];
+    
+    // 🔧 応急処置: 左肩にY軸90度回転を強制適用
+    if (jointName === 'leftShoulder') {
+      const yAxisRotation = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0), 
+        Math.PI / 2  // 90度
+      );
+      rotation = rotation.multiply(yAxisRotation);
+      console.log('🔧 左肩に強制Y軸90度回転を適用');
+    }
+    
     if (!adjustment) {
       return rotation;
     }
@@ -167,14 +178,46 @@ export class PolarPoseRetarget {
     const rotations: Record<string, THREE.Quaternion> = {};
 
     try {
+      console.log('🔄 関節回転計算開始...');
+      
+      // 角度調整が設定されているかチェック
+      const hasAdjustments = Object.keys(this.angleAdjustments).length > 0;
+      if (hasAdjustments) {
+        console.log('🎛️ 角度調整が適用されます:', this.angleAdjustments);
+      } else {
+        console.log('⚠️ 角度調整が設定されていません（生の計算値を使用）');
+      }
+
       // 肩の回転（左）
       if (landmarks[11] && landmarks[13]) {
         const shoulderDir = this.calculateJointDirection(landmarks[11], landmarks[13]);
-        const defaultDir = new THREE.Vector3(1, 0, 0); // 右向き
+        const defaultDir = new THREE.Vector3(-1, 0, 0); // 🔧 修正: 左向きに変更
         let rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
+        
+        console.log('🔍 左肩回転計算:');
+        console.log('  方向ベクトル:', shoulderDir.x.toFixed(3), shoulderDir.y.toFixed(3), shoulderDir.z.toFixed(3));
+        
+        // 適用前の回転をログ
+        const beforeEuler = new THREE.Euler().setFromQuaternion(rotation);
+        console.log('  調整前回転:', (beforeEuler.x * 180 / Math.PI).toFixed(1) + '°', 
+                   (beforeEuler.y * 180 / Math.PI).toFixed(1) + '°', 
+                   (beforeEuler.z * 180 / Math.PI).toFixed(1) + '°');
         
         // 角度調整を適用
         rotation = this.applyRotationAdjustments('leftShoulder', rotation);
+        
+        // 適用後の回転をログ
+        const afterEuler = new THREE.Euler().setFromQuaternion(rotation);
+        console.log('  調整後回転:', (afterEuler.x * 180 / Math.PI).toFixed(1) + '°', 
+                   (afterEuler.y * 180 / Math.PI).toFixed(1) + '°', 
+                   (afterEuler.z * 180 / Math.PI).toFixed(1) + '°');
+        
+        if (hasAdjustments) {
+          const adj = this.angleAdjustments['leftShoulder'];
+          if (adj) {
+            console.log('  適用した調整値:', `omega=${adj.omega.toFixed(1)}°, phi=${adj.phi.toFixed(1)}°`);
+          }
+        }
         
         rotations.leftShoulder = this.applySmoothingToRotation('leftShoulder', rotation);
       }
@@ -185,8 +228,30 @@ export class PolarPoseRetarget {
         const defaultDir = new THREE.Vector3(-1, 0, 0); // 左向き
         let rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
         
+        console.log('🔍 右肩回転計算:');
+        console.log('  方向ベクトル:', shoulderDir.x.toFixed(3), shoulderDir.y.toFixed(3), shoulderDir.z.toFixed(3));
+        
+        // 適用前の回転をログ
+        const beforeEuler = new THREE.Euler().setFromQuaternion(rotation);
+        console.log('  調整前回転:', (beforeEuler.x * 180 / Math.PI).toFixed(1) + '°', 
+                   (beforeEuler.y * 180 / Math.PI).toFixed(1) + '°', 
+                   (beforeEuler.z * 180 / Math.PI).toFixed(1) + '°');
+        
         // 角度調整を適用
         rotation = this.applyRotationAdjustments('rightShoulder', rotation);
+        
+        // 適用後の回転をログ
+        const afterEuler = new THREE.Euler().setFromQuaternion(rotation);
+        console.log('  調整後回転:', (afterEuler.x * 180 / Math.PI).toFixed(1) + '°', 
+                   (afterEuler.y * 180 / Math.PI).toFixed(1) + '°', 
+                   (afterEuler.z * 180 / Math.PI).toFixed(1) + '°');
+        
+        if (hasAdjustments) {
+          const adj = this.angleAdjustments['rightShoulder'];
+          if (adj) {
+            console.log('  適用した調整値:', `omega=${adj.omega.toFixed(1)}°, phi=${adj.phi.toFixed(1)}°`);
+          }
+        }
         
         rotations.rightShoulder = this.applySmoothingToRotation('rightShoulder', rotation);
       }
@@ -194,7 +259,7 @@ export class PolarPoseRetarget {
       // 肘の回転（左）
       if (landmarks[13] && landmarks[15]) {
         const elbowDir = this.calculateJointDirection(landmarks[13], landmarks[15]);
-        const defaultDir = new THREE.Vector3(1, 0, 0);
+        const defaultDir = new THREE.Vector3(-1, 0, 0); // 🔧 修正: 左向きに変更
         let rotation = this.getRotationBetweenVectors(defaultDir, elbowDir);
         
         // 角度調整を適用
@@ -603,49 +668,56 @@ export class PolarPoseRetarget {
 
     console.log(`🎯 ${tposeSamples.length}個のT-poseサンプルから補正値を自動計算中...`);
 
-    // 理想的なT-pose角度を定義
+    // 🔧 修正: 理想的なT-pose角度を定義（ラジアン）
     const idealTPoseAngles: Record<string, { omega: number; phi: number }> = {
-      leftShoulder: { omega: 90, phi: 0 },    // 左腕を水平に
-      rightShoulder: { omega: -90, phi: 0 },  // 右腕を水平に
-      leftElbow: { omega: 0, phi: 0 },        // 肘は真っ直ぐ
-      rightElbow: { omega: 0, phi: 0 },       // 肘は真っ直ぐ
-      leftWrist: { omega: 0, phi: 0 },        // 手首は自然に
-      rightWrist: { omega: 0, phi: 0 },       // 手首は自然に
-      leftHip: { omega: 0, phi: 0 },          // 腰は中立
-      rightHip: { omega: 0, phi: 0 },         // 腰は中立
-      leftKnee: { omega: 0, phi: 0 },         // 膝は真っ直ぐ
-      rightKnee: { omega: 0, phi: 0 },        // 膝は真っ直ぐ
-      leftAnkle: { omega: 0, phi: 0 },        // 足首は中立
-      rightAnkle: { omega: 0, phi: 0 },       // 足首は中立
+      leftShoulder: { omega: -Math.PI / 2, phi: 0 },       // 🔧 左腕を-90度水平に（右と同じ方向）
+      rightShoulder: { omega: -Math.PI / 2, phi: 0 },      // 右腕を90度水平に
+      leftElbow: { omega: 0, phi: 0 },                     // 肘は真っ直ぐ
+      rightElbow: { omega: 0, phi: 0 },                    // 肘は真っ直ぐ
+      leftWrist: { omega: 0, phi: 0 },                     // 手首は自然に
+      rightWrist: { omega: 0, phi: 0 },                    // 手首は自然に
+      leftHip: { omega: 0, phi: 0 },                       // 腰は中立
+      rightHip: { omega: 0, phi: 0 },                      // 腰は中立
+      leftKnee: { omega: 0, phi: 0 },                      // 膝は真っ直ぐ
+      rightKnee: { omega: 0, phi: 0 },                     // 膝は真っ直ぐ
+      leftAnkle: { omega: 0, phi: 0 },                     // 足首は中立
+      rightAnkle: { omega: 0, phi: 0 },                    // 足首は中立
     };
+
+    console.log('📐 理想T-pose角度（ラジアン）:', idealTPoseAngles);
 
     // 各サンプルから極座標を計算し、平均を取る
     const averageAngles: Record<string, { omega: number; phi: number; count: number }> = {};
 
-    tposeSamples.forEach((sample) => {
+    console.log('🔍 T-poseサンプル分析開始...');
+
+    tposeSamples.forEach((sample, sampleIndex) => {
       const landmarks = sample.landmarks[0];
       if (!landmarks) return;
 
+      console.log(`📊 サンプル${sampleIndex + 1}/${tposeSamples.length}を分析中...`);
+
       // 胴体平面を計算
       const torsoPlane = this.calculateTorsoPlane(landmarks);
+      console.log(`  胴体平面: 原点(${torsoPlane.origin.x.toFixed(3)}, ${torsoPlane.origin.y.toFixed(3)}, ${torsoPlane.origin.z.toFixed(3)})`);
       
       // 各関節の極座標を計算
       const jointDefinitions = [
-        { name: 'leftShoulder', from: 11, to: 13 },   // 肩→肘
-        { name: 'rightShoulder', from: 12, to: 14 },  // 肩→肘
-        { name: 'leftElbow', from: 13, to: 15 },      // 肘→手首
-        { name: 'rightElbow', from: 14, to: 16 },     // 肘→手首
-        { name: 'leftWrist', from: 15, to: 17 },      // 手首→親指
-        { name: 'rightWrist', from: 16, to: 18 },     // 手首→親指
-        { name: 'leftHip', from: 23, to: 25 },        // 腰→膝
-        { name: 'rightHip', from: 24, to: 26 },       // 腰→膝
-        { name: 'leftKnee', from: 25, to: 27 },       // 膝→足首
-        { name: 'rightKnee', from: 26, to: 28 },      // 膝→足首
-        { name: 'leftAnkle', from: 27, to: 29 },      // 足首→かかと
-        { name: 'rightAnkle', from: 28, to: 30 },     // 足首→かかと
+        { name: 'leftShoulder', from: 11, to: 13, description: '左肩→左肘' },
+        { name: 'rightShoulder', from: 12, to: 14, description: '右肩→右肘' },
+        { name: 'leftElbow', from: 13, to: 15, description: '左肘→左手首' },
+        { name: 'rightElbow', from: 14, to: 16, description: '右肘→右手首' },
+        { name: 'leftWrist', from: 15, to: 17, description: '左手首→左親指' },
+        { name: 'rightWrist', from: 16, to: 18, description: '右手首→右親指' },
+        { name: 'leftHip', from: 23, to: 25, description: '左腰→左膝' },
+        { name: 'rightHip', from: 24, to: 26, description: '右腰→右膝' },
+        { name: 'leftKnee', from: 25, to: 27, description: '左膝→左足首' },
+        { name: 'rightKnee', from: 26, to: 28, description: '右膝→右足首' },
+        { name: 'leftAnkle', from: 27, to: 29, description: '左足首→左かかと' },
+        { name: 'rightAnkle', from: 28, to: 30, description: '右足首→右かかと' },
       ];
 
-      jointDefinitions.forEach(({ name, from, to }) => {
+      jointDefinitions.forEach(({ name, from, to, description }) => {
         if (landmarks[from] && landmarks[to]) {
           const fromPoint = this.landmarkToVector3(landmarks[from]);
           const toPoint = this.landmarkToVector3(landmarks[to]);
@@ -663,32 +735,60 @@ export class PolarPoseRetarget {
           averageAngles[name].omega += polarCoords.omega;
           averageAngles[name].phi += polarCoords.phi;
           averageAngles[name].count++;
+
+          // 🔍 詳細ログ出力
+          console.log(`    ${description} (${name}):`);
+          console.log(`      From: (${fromPoint.x.toFixed(3)}, ${fromPoint.y.toFixed(3)}, ${fromPoint.z.toFixed(3)})`);
+          console.log(`      To: (${toPoint.x.toFixed(3)}, ${toPoint.y.toFixed(3)}, ${toPoint.z.toFixed(3)})`);
+          console.log(`      Direction: (${direction.x.toFixed(3)}, ${direction.y.toFixed(3)}, ${direction.z.toFixed(3)})`);
+          console.log(`      極座標: omega=${(polarCoords.omega * 180 / Math.PI).toFixed(1)}°, phi=${(polarCoords.phi * 180 / Math.PI).toFixed(1)}°`);
         }
       });
     });
 
     // 平均を計算
+    console.log('🧮 平均値計算中...');
     Object.keys(averageAngles).forEach(joint => {
       const avg = averageAngles[joint];
       if (avg.count > 0) {
         avg.omega /= avg.count;
         avg.phi /= avg.count;
+        console.log(`  ${joint}: omega=${(avg.omega * 180 / Math.PI).toFixed(1)}° (${avg.count}サンプル平均)`);
+        console.log(`            phi=${(avg.phi * 180 / Math.PI).toFixed(1)}°`);
       }
     });
 
-    // 補正値を計算（理想 - 実際）
+    // 🔧 修正: 補正値を計算（理想 - 実際、度数で表示）
     const adjustments: Record<string, { omega: number; phi: number }> = {};
+    console.log('🎛️ 補正値計算...');
+    
     Object.keys(idealTPoseAngles).forEach(joint => {
       const ideal = idealTPoseAngles[joint];
       const actual = averageAngles[joint] || { omega: 0, phi: 0, count: 0 };
       
+      // 🔧 角度差を計算（ラジアン）
+      let omegaDiff = ideal.omega - actual.omega;
+      let phiDiff = ideal.phi - actual.phi;
+
+      // 🔧 角度を-π〜πの範囲に正規化
+      while (omegaDiff > Math.PI) omegaDiff -= 2 * Math.PI;
+      while (omegaDiff < -Math.PI) omegaDiff += 2 * Math.PI;
+      while (phiDiff > Math.PI) phiDiff -= 2 * Math.PI;
+      while (phiDiff < -Math.PI) phiDiff += 2 * Math.PI;
+      
       adjustments[joint] = {
-        omega: ideal.omega - actual.omega,
-        phi: ideal.phi - actual.phi
+        omega: omegaDiff * 180 / Math.PI, // 度数で保存
+        phi: phiDiff * 180 / Math.PI      // 度数で保存
       };
+
+      // 詳細ログ
+      console.log(`  ${joint}:`);
+      console.log(`    理想: omega=${(ideal.omega * 180 / Math.PI).toFixed(1)}°, phi=${(ideal.phi * 180 / Math.PI).toFixed(1)}°`);
+      console.log(`    実際: omega=${(actual.omega * 180 / Math.PI).toFixed(1)}°, phi=${(actual.phi * 180 / Math.PI).toFixed(1)}°`);
+      console.log(`    補正: omega=${adjustments[joint].omega.toFixed(1)}°, phi=${adjustments[joint].phi.toFixed(1)}°`);
     });
 
-    console.log('🎛️ 自動計算された補正値:', adjustments);
+    console.log('🎛️ 最終的な自動計算補正値（度数）:', adjustments);
     return adjustments;
   }
 
@@ -720,6 +820,14 @@ export class PolarPoseRetarget {
       console.error('オートチューニング中にエラーが発生しました:', error);
       return false;
     }
+  }
+
+  /**
+   * 角度調整値をクリア（デバッグ用）
+   */
+  clearAngleAdjustments() {
+    this.angleAdjustments = {};
+    console.log('🧹 角度調整値をクリアしました（生の計算値を使用）');
   }
 }
 

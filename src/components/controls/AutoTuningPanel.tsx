@@ -225,6 +225,21 @@ export default function AutoTuningPanel({
             🚀 オートチューニング開始
           </Button>
           
+          {/* 🔧 デバッグボタン */}
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (poseRetarget) {
+                poseRetarget.clearAngleAdjustments();
+              }
+            }}
+            size="small"
+            color="error"
+            sx={{ fontSize: '12px' }}
+          >
+            🧹 補正値クリア
+          </Button>
+          
           {/* 使用方法 */}
           <Typography variant="caption" sx={{ color: '#666', fontSize: '11px' }}>
             💡 使用方法：<br/>

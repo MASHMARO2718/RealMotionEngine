@@ -34,6 +34,7 @@ export default function MultiTrackingPage() {
   const [angleAdjustments, setAngleAdjustments] = useState<Record<string, { omega: number; phi: number }>>({});
   const [poseRetarget] = useState(() => new PolarPoseRetarget(0.1, 'full'));
   const [autoTuningEnabled, setAutoTuningEnabled] = useState(false);
+  const [isTuned, setIsTuned] = useState(false);
 
   // 脚補正モード変更時の処理
   const handleLegCorrectionModeChange = (mode: 'full' | 'partial') => {
@@ -53,6 +54,8 @@ export default function MultiTrackingPage() {
     setAngleAdjustments(adjustments);
     // 確実に同じインスタンスに補正値を適用
     poseRetarget.setAngleAdjustments(adjustments);
+    // チューニング完了フラグをセット
+    setIsTuned(true);
   };
 
   return (
@@ -118,6 +121,22 @@ export default function MultiTrackingPage() {
             >
               {autoTuningEnabled ? "🎯 オートチューニング: ON" : "🎯 オートチューニング: OFF"}
             </Button>
+            <Button
+              variant={isTuned ? "contained" : "outlined"}
+              size="small"
+              disabled
+              color={isTuned ? "success" : "warning"}
+              sx={{ 
+                bgcolor: isTuned ? '#4caf50' : '#ff9800',
+                color: 'white',
+                '&.Mui-disabled': {
+                  bgcolor: isTuned ? '#4caf50' : '#ff9800',
+                  color: 'white'
+                }
+              }}
+            >
+              {isTuned ? "✅ チューニング完了" : "⚠️ チューニング必要"}
+            </Button>
           </Box>
           
           {/* 3Dモデルビュー */}
@@ -131,6 +150,7 @@ export default function MultiTrackingPage() {
             onLegCorrectionModeChange={handleLegCorrectionModeChange}
             angleAdjustments={angleAdjustments}
             poseRetarget={poseRetarget}
+            isTuned={isTuned}
           />
 
           {/* データ分析コンポーネント群 */}
