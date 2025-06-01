@@ -410,7 +410,7 @@ function HumanBoneModel({ poseData }: { poseData?: PoseLandmarkerResult | null }
   return <primitive ref={group} object={scene} />;
 }
 
-function Scene({ poseData, showAxes = true, showAngles = true }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean }) {
+function Scene({ poseData, showAxes = true, showAngles = true, angleAdjustments }: { poseData?: PoseLandmarkerResult | null; showAxes?: boolean; showAngles?: boolean; angleAdjustments?: Record<string, { omega: number; phi: number }> }) {
   const [angleData, setAngleData] = useState<any>(null);
   const polarRetarget = useRef(new PolarPoseRetarget(0.1));
 
@@ -423,6 +423,27 @@ function Scene({ poseData, showAxes = true, showAngles = true }: { poseData?: Po
       setAngleData(null);
     }
   }, [poseData]);
+
+  // ポーズデータをリアルタイムで処理
+  useFrame(() => {
+    if (poseData && polarRetarget.current) {
+      try {
+        // 角度調整値を適用
+        if (angleAdjustments) {
+          polarRetarget.current.setAngleAdjustments(angleAdjustments);
+        }
+        
+        // ポーズ分析と角度計算
+        const analysis = polarRetarget.current.analyzePose(poseData);
+        const calculatedAngleData = polarRetarget.current.calculateAnglesForVisualization(poseData);
+        
+        setAngleData(calculatedAngleData);
+        
+      } catch (error) {
+        console.error('Pose processing error:', error);
+      }
+    }
+  });
 
   return (
     <>
@@ -458,7 +479,7 @@ function Scene({ poseData, showAxes = true, showAngles = true }: { poseData?: Po
           <meshStandardMaterial color="orange" />
         </mesh>
       }>
-        <StickmanModel poseData={poseData} />
+        <StickmanModel poseData={poseData} angleAdjustments={angleAdjustments} />
       </Suspense>
 
       {/* 🌟 角度可視化 - 極座標と関節角度の弧 */}
@@ -493,9 +514,10 @@ interface ModelViewerProps {
   showAngles?: boolean;
   legCorrectionMode?: 'full' | 'partial';
   onLegCorrectionModeChange?: (mode: 'full' | 'partial') => void;
+  angleAdjustments?: Record<string, { omega: number; phi: number }>;
 }
 
-export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange }: ModelViewerProps) {
+export default function ModelViewer({ width = 560, height = 420, poseData, showAxes, showAngles, legCorrectionMode = 'full', onLegCorrectionModeChange, angleAdjustments }: ModelViewerProps) {
   return (
     <Box sx={{ width, height, position: 'relative' }}>
       {/* 脚補正モード切り替えボタン */}
@@ -528,7 +550,7 @@ export default function ModelViewer({ width = 560, height = 420, poseData, showA
         }}
         style={{ background: '#000814' }}
       >
-        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} />
+        <Scene poseData={poseData} showAxes={showAxes} showAngles={showAngles} angleAdjustments={angleAdjustments} />
       </Canvas>
     </Box>
   );

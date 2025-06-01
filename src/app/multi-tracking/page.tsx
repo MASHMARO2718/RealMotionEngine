@@ -8,6 +8,7 @@ import { useState } from 'react';
 
 import BodyDataAnalyzer from '../../components/analysis/BodyDataAnalyzer';
 import JointAngleAnalyzer from '../../components/analysis/JointAngleAnalyzer';
+import AngleAdjustmentPanel from '../../components/controls/AngleAdjustmentPanel';
 
 // クライアントサイドのみでレンダリングする必要がある
 const MultiTrackerWithLockOn = dynamic(
@@ -25,6 +26,7 @@ export default function MultiTrackingPage() {
   const [showAxes, setShowAxes] = useState(true);
   const [showAngles, setShowAngles] = useState(true);
   const [legCorrectionMode, setLegCorrectionMode] = useState<'full' | 'partial'>('full');
+  const [angleAdjustments, setAngleAdjustments] = useState<Record<string, { omega: number; phi: number }>>({});
 
   return (
     <Box sx={{ 
@@ -39,7 +41,7 @@ export default function MultiTrackingPage() {
         flexDirection: 'row', 
         p: 4, 
         pl: 12, 
-        width: 'max(100vw, 1340px)',
+        width: 'max(100vw, 1640px)',
         minHeight: 'calc(100vh - 32px)',
         alignItems: 'flex-start', 
         justifyContent: 'flex-start',
@@ -55,7 +57,7 @@ export default function MultiTrackingPage() {
           />
         </Box>
         
-        {/* 右側：3Dモデルビューとデータ分析（拡大） */}
+        {/* 中央：3Dモデルビューとデータ分析 */}
         <Box sx={{ width: 680, minWidth: 680, maxWidth: 680, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           {/* 3D表示制御 */}
           <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
@@ -86,6 +88,7 @@ export default function MultiTrackingPage() {
             showAngles={showAngles}
             legCorrectionMode={legCorrectionMode}
             onLegCorrectionModeChange={setLegCorrectionMode}
+            angleAdjustments={angleAdjustments}
           />
           
           {/* データ分析コンポーネント群 */}
@@ -112,6 +115,15 @@ export default function MultiTrackingPage() {
               />
             </Box>
           </Box>
+        </Box>
+
+        {/* 右側：角度調整パネル */}
+        <Box sx={{ width: 280, minWidth: 280, maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <AngleAdjustmentPanel 
+            width={280}
+            height={800}
+            onAdjustmentChange={setAngleAdjustments}
+          />
         </Box>
       </Box>
     </Box>

@@ -10,6 +10,7 @@ export class PolarPoseRetarget {
   private smoothingFactor = 0.1;
   private previousRotations = new Map<string, THREE.Quaternion>();
   private legCorrectionMode: 'full' | 'partial' = 'full'; // 足の補正モード
+  private angleAdjustments: Record<string, { omega: number; phi: number }> = {}; // 角度調整値
 
   constructor(smoothingFactor = 0.1, legCorrectionMode: 'full' | 'partial' = 'full') {
     this.smoothingFactor = smoothingFactor;
@@ -30,6 +31,64 @@ export class PolarPoseRetarget {
   setLegCorrectionMode(mode: 'full' | 'partial') {
     this.legCorrectionMode = mode;
     console.log(`🦵 脚補正モード変更: ${mode === 'full' ? '180度' : '80度'}補正`);
+  }
+
+  /**
+   * 角度調整値を設定
+   * @param adjustments 各関節のomega/phi調整値（度数）
+   */
+  setAngleAdjustments(adjustments: Record<string, { omega: number; phi: number }>) {
+    this.angleAdjustments = adjustments;
+    console.log('🎛️ 角度調整値を更新:', adjustments);
+  }
+
+  /**
+   * 角度調整値を適用
+   */
+  private applyAngleAdjustments(jointName: string, omega: number, phi: number): { omega: number; phi: number } {
+    const adjustment = this.angleAdjustments[jointName];
+    if (!adjustment) {
+      return { omega, phi };
+    }
+
+    // 度数からラジアンに変換して適用
+    const adjustedOmega = omega + (adjustment.omega * Math.PI / 180);
+    const adjustedPhi = phi + (adjustment.phi * Math.PI / 180);
+
+    return { 
+      omega: adjustedOmega, 
+      phi: adjustedPhi 
+    };
+  }
+
+  /**
+   * 回転調整値をクォータニオンに適用
+   */
+  private applyRotationAdjustments(jointName: string, rotation: THREE.Quaternion): THREE.Quaternion {
+    const adjustment = this.angleAdjustments[jointName];
+    if (!adjustment) {
+      return rotation;
+    }
+
+    // Omega調整（Z軸回転として適用）
+    if (adjustment.omega !== 0) {
+      const omegaRotation = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1), 
+        adjustment.omega * Math.PI / 180
+      );
+      rotation = rotation.multiply(omegaRotation);
+    }
+
+    // Phi調整（X軸回転として適用）
+    if (adjustment.phi !== 0) {
+      const phiRotation = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0), 
+        adjustment.phi * Math.PI / 180
+      );
+      rotation = rotation.multiply(phiRotation);
+    }
+
+    return rotation;
   }
 
   /**
@@ -94,7 +153,11 @@ export class PolarPoseRetarget {
       if (landmarks[11] && landmarks[13]) {
         const shoulderDir = this.calculateJointDirection(landmarks[11], landmarks[13]);
         const defaultDir = new THREE.Vector3(1, 0, 0); // 右向き
-        const rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
+        let rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('leftShoulder', rotation);
+        
         rotations.leftShoulder = this.applySmoothingToRotation('leftShoulder', rotation);
       }
 
@@ -102,7 +165,11 @@ export class PolarPoseRetarget {
       if (landmarks[12] && landmarks[14]) {
         const shoulderDir = this.calculateJointDirection(landmarks[12], landmarks[14]);
         const defaultDir = new THREE.Vector3(-1, 0, 0); // 左向き
-        const rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
+        let rotation = this.getRotationBetweenVectors(defaultDir, shoulderDir);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('rightShoulder', rotation);
+        
         rotations.rightShoulder = this.applySmoothingToRotation('rightShoulder', rotation);
       }
 
@@ -110,7 +177,11 @@ export class PolarPoseRetarget {
       if (landmarks[13] && landmarks[15]) {
         const elbowDir = this.calculateJointDirection(landmarks[13], landmarks[15]);
         const defaultDir = new THREE.Vector3(1, 0, 0);
-        const rotation = this.getRotationBetweenVectors(defaultDir, elbowDir);
+        let rotation = this.getRotationBetweenVectors(defaultDir, elbowDir);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('leftElbow', rotation);
+        
         rotations.leftElbow = this.applySmoothingToRotation('leftElbow', rotation);
       }
 
@@ -118,7 +189,11 @@ export class PolarPoseRetarget {
       if (landmarks[14] && landmarks[16]) {
         const elbowDir = this.calculateJointDirection(landmarks[14], landmarks[16]);
         const defaultDir = new THREE.Vector3(-1, 0, 0);
-        const rotation = this.getRotationBetweenVectors(defaultDir, elbowDir);
+        let rotation = this.getRotationBetweenVectors(defaultDir, elbowDir);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('rightElbow', rotation);
+        
         rotations.rightElbow = this.applySmoothingToRotation('rightElbow', rotation);
       }
 
@@ -131,6 +206,9 @@ export class PolarPoseRetarget {
         // 左足のZ軸180度補正
         const zCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
         rotation = rotation.multiply(zCorrection);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('leftHip', rotation);
         
         rotations.leftHip = this.applySmoothingToRotation('leftHip', rotation);
       }
@@ -145,6 +223,9 @@ export class PolarPoseRetarget {
         const zCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
         rotation = rotation.multiply(zCorrection);
         
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('rightHip', rotation);
+        
         rotations.rightHip = this.applySmoothingToRotation('rightHip', rotation);
       }
 
@@ -158,6 +239,9 @@ export class PolarPoseRetarget {
         const zCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
         rotation = rotation.multiply(zCorrection);
         
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('leftKnee', rotation);
+        
         rotations.leftKnee = this.applySmoothingToRotation('leftKnee', rotation);
       }
 
@@ -170,6 +254,9 @@ export class PolarPoseRetarget {
         // 右膝のZ軸180度補正
         const zCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
         rotation = rotation.multiply(zCorrection);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('rightKnee', rotation);
         
         rotations.rightKnee = this.applySmoothingToRotation('rightKnee', rotation);
       }
@@ -185,6 +272,9 @@ export class PolarPoseRetarget {
         const yCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctionAngle);
         rotation = rotation.multiply(yCorrection);
         
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('leftAnkle', rotation);
+        
         rotations.leftAnkle = this.applySmoothingToRotation('leftAnkle', rotation);
       }
 
@@ -199,6 +289,9 @@ export class PolarPoseRetarget {
         const yCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), correctionAngle);
         rotation = rotation.multiply(yCorrection);
         
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('rightAnkle', rotation);
+        
         rotations.rightAnkle = this.applySmoothingToRotation('rightAnkle', rotation);
       }
 
@@ -208,7 +301,11 @@ export class PolarPoseRetarget {
         const hipCenter = this.landmarkToVector3(landmarks[23]).add(this.landmarkToVector3(landmarks[24])).multiplyScalar(0.5);
         const spineDir = shoulderCenter.sub(hipCenter).normalize();
         const defaultDir = new THREE.Vector3(0, 1, 0);
-        const rotation = this.getRotationBetweenVectors(defaultDir, spineDir);
+        let rotation = this.getRotationBetweenVectors(defaultDir, spineDir);
+        
+        // 角度調整を適用
+        rotation = this.applyRotationAdjustments('spine', rotation);
+        
         rotations.spine = this.applySmoothingToRotation('spine', rotation);
       }
 
@@ -376,11 +473,14 @@ export class PolarPoseRetarget {
           const theta = Math.atan2(relative.z, relative.x);
           const phi = Math.acos(Math.max(-1, Math.min(1, relative.y / r)));
           
+          // 角度調整を適用
+          const adjustedAngles = this.applyAngleAdjustments(joint.name, torsoCoords.omega, torsoCoords.phi);
+          
           polarAngles[joint.name] = {
             theta: theta,
             phi: phi,
             position: position.clone(),
-            omega: torsoCoords.omega,
+            omega: adjustedAngles.omega,
             projectedPoint: torsoCoords.projectedPoint
           };
         }
