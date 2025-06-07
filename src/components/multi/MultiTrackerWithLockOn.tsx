@@ -724,7 +724,7 @@ export default function MultiTrackerWithLockOn({
       // 実際に映像が流れ始めるまで少し待機
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      setIsRunning(true);
+            setIsRunning(true);
       console.log('✅ カメラセットアップ完了');
       
     } catch (err) {
@@ -1630,8 +1630,8 @@ export default function MultiTrackerWithLockOn({
                     '& .MuiSelect-select': {
                       padding: '0.5rem',
                     },
-                  }}
-                >
+              }}
+            >
                   {availableCameras.map((camera) => (
                     <MenuItem key={camera.deviceId} value={camera.deviceId}>
                       {camera.label}

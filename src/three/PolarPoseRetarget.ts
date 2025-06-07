@@ -670,18 +670,18 @@ export class PolarPoseRetarget {
 
     // 🔧 修正: 理想的なT-pose角度を定義（ラジアン）
     const idealTPoseAngles: Record<string, { omega: number; phi: number }> = {
-      leftShoulder: { omega: -Math.PI / 2, phi: 0 },       // 🔧 左腕を-90度水平に（右と同じ方向）
-      rightShoulder: { omega: -Math.PI / 2, phi: 0 },      // 右腕を90度水平に
-      leftElbow: { omega: 0, phi: 0 },                     // 肘は真っ直ぐ
-      rightElbow: { omega: 0, phi: 0 },                    // 肘は真っ直ぐ
-      leftWrist: { omega: 0, phi: 0 },                     // 手首は自然に
-      rightWrist: { omega: 0, phi: 0 },                    // 手首は自然に
-      leftHip: { omega: 0, phi: 0 },                       // 腰は中立
-      rightHip: { omega: 0, phi: 0 },                      // 腰は中立
-      leftKnee: { omega: 0, phi: 0 },                      // 膝は真っ直ぐ
-      rightKnee: { omega: 0, phi: 0 },                     // 膝は真っ直ぐ
-      leftAnkle: { omega: 0, phi: 0 },                     // 足首は中立
-      rightAnkle: { omega: 0, phi: 0 },                    // 足首は中立
+      leftShoulder: { omega: -Math.PI / 2, phi: 0 },       // 左腕を-90度水平に
+      rightShoulder: { omega: (105 * Math.PI / 180), phi: 0 },  // 右肩は105度
+      leftElbow: { omega: 0, phi: 0 },
+      rightElbow: { omega: 0, phi: 0 },
+      leftWrist: { omega: 0, phi: 0 },
+      rightWrist: { omega: 0, phi: 0 },
+      leftHip: { omega: 0, phi: 0 },
+      rightHip: { omega: 0, phi: 0 },
+      leftKnee: { omega: 0, phi: 0 },
+      rightKnee: { omega: 0, phi: 0 },
+      leftAnkle: { omega: 0, phi: 0 },
+      rightAnkle: { omega: 0, phi: 0 },
     };
 
     console.log('📐 理想T-pose角度（ラジアン）:', idealTPoseAngles);
